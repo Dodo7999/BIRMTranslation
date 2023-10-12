@@ -13,7 +13,7 @@
 # conda
 . "/userspace/bma/miniconda3/etc/profile.d/conda.sh"
 conda activate pycuda
-export TRANSFORMERS_CACHE=/storage0/bi/.transformersCache
+export TRANSFORMERS_CACHE=/userspace/bma/.transformersCache
 export PYTORCH_CUDA_ALLOC_CONF=garbage_collection_threshold:0.6,max_split_size_mb:128
 
 export PATH=/usr/local/cuda-11/bin${PATH:+:${PATH}}
