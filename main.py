@@ -93,10 +93,10 @@ raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['tra
 
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
-train_inputs = np.array(datasets_train['input_ids'])
-train_targets = np.array(datasets_train['labels'])
-val_inputs = np.array(datasets_val['input_ids'])
-val_targets = np.array(datasets_val['labels'])
+train_inputs = np.array(datasets_train['input_ids'], dtype=object)
+train_targets = np.array(datasets_train['labels'], dtype=object)
+val_inputs = np.array(datasets_val['input_ids'], dtype=object)
+val_targets = np.array(datasets_val['labels'], dtype=object)
 
 n_epoch = 10
 cel = torch.nn.CrossEntropyLoss()
