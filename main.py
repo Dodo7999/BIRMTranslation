@@ -12,7 +12,7 @@ source_lang = "en"
 target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-
+print(torch.cuda.is_available())
 torch.set_default_device(device)
 
 google_bleu = evaluate.load("google_bleu")
