@@ -20,7 +20,7 @@ export PATH=/usr/local/cuda-11/bin${PATH:+:${PATH}}
 nvidia-smi -L
 nvcc -V
 python -V
-conda install --file requirements.txt
+#conda install --file requirements.txt
 
 python main.py
 
