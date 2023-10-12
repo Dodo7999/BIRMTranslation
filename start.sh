@@ -4,7 +4,7 @@
 #SBATCH --error=/storage0/bi/w2v_birm_open.err
 #SBATCH --output=/storage0/bi/w2v_birm_open.log
 #SBATCH --partition=a100
-#SBATCH --nodelist=ngpu01
+#SBATCH --nodelist=ngpu06
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
