@@ -1,5 +1,5 @@
 import torch
-from transformers import MBartForConditionalGeneration
+from transformers import AutoModelForSeq2SeqLM
 from transformers import MBart50TokenizerFast
 from datasets import load_dataset
 from torch.utils.data import Dataset
@@ -22,7 +22,7 @@ model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
 tokenizer.src_lang = "en_XX"
 tokenizer.tgt_lang = "ru_RU"
-model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 
 def preprocess_function(examples):
