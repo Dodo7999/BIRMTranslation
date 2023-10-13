@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --job-name=w2v_birm_open
+#SBATCH --job-name=bsl_shift
 #SBATCH --error=/userspace/bma/bsl_shift_err.log
 #SBATCH --output=/userspace/bma/bsl_shift.log
 #SBATCH --partition=a100
