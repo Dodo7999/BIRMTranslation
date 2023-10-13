@@ -1,14 +1,16 @@
 #!/bin/sh
 
 #SBATCH --job-name=w2v_birm_open
-#SBATCH --error=/storage0/bi/w2v_birm_open.err
-#SBATCH --output=/storage0/bi/w2v_birm_open.log
+#SBATCH --error=/userspace/bma/bsl_shift_err.log
+#SBATCH --output=/userspace/bma/bsl_shift.log
 #SBATCH --partition=a100
 #SBATCH --nodelist=ngpu06
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-socket=1
+#SBATCH --no-requeue
+#SBATCH -o bsl_shift.log
 
 # conda
 . "/userspace/bma/miniconda3/etc/profile.d/conda.sh"
