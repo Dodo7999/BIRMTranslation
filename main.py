@@ -6,8 +6,6 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-from datasets import disable_caching
-disable_caching()
 
 logging.basicConfig(level=logging.INFO)
 
