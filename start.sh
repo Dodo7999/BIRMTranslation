@@ -15,6 +15,7 @@
 # conda
 . "/userspace/bma/miniconda3/etc/profile.d/conda.sh"
 conda activate pycuda
+export HF_HOME=/userspace/bma/.transformersCache
 export TRANSFORMERS_CACHE=/userspace/bma/.transformersCache
 export PYTORCH_CUDA_ALLOC_CONF=garbage_collection_threshold:0.6,max_split_size_mb:128
 
