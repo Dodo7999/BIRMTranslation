@@ -92,8 +92,8 @@ def generator(data, batch_size, shuffle=False):
         yield data[batch_ids]
 
 
-raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
+raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
 print(f"raw_datasets_train = {raw_datasets_train}")
 print(f"raw_datasets_val = {raw_datasets_val}")
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
