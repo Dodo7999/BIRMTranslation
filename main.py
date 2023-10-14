@@ -6,7 +6,6 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,21 +15,19 @@ source_lang = "en"
 target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-print(f"torch.cuda.is_available() = {torch.cuda.is_available()}")
-print(f"device = {device}")
-print(os.path)
 torch.set_default_device(device)
 
-google_bleu = evaluate.load("google_bleu", cache_dir="/userspace/bma/.transformersCache")
+google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 print(f"google_bleu = {google_bleu}")
 model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 
-tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint, cache_dir="/userspace/bma/.transformersCache")
+tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint, keep_in_memory=True)
 print(f"tokenizer = {tokenizer}")
 tokenizer.src_lang = "en_XX"
 tokenizer.tgt_lang = "ru_RU"
-model = MBartForConditionalGeneration.from_pretrained(model_checkpoint, cache_dir="/userspace/bma/.transformersCache")
+model = MBartForConditionalGeneration.from_pretrained(model_checkpoint, keep_in_memory=True)
 print(f"model = {model}")
+
 
 def preprocess_function(examples):
     inputs = [ex[source_lang] for ex in examples["translation"]]
@@ -95,8 +92,9 @@ def generator(data, batch_size, shuffle=False):
         yield data[batch_ids]
 
 
-raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]', cache_dir="/userspace/bma/.transformersCache")
-raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100), cache_dir="/userspace/bma/.transformersCache")
+raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]', keep_in_memory=True)
+raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100),
+                                                                                            keep_in_memory=True)
 print(f"raw_datasets_train = {raw_datasets_train}")
 print(f"raw_datasets_val = {raw_datasets_val}")
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
