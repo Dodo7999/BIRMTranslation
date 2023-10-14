@@ -18,15 +18,13 @@ target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
-
+print(f"torch.cuda.is_available() = {torch.cuda.is_available()}")
 model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 
 tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
-print(f"tokenizer = {tokenizer}")
 tokenizer.src_lang = "en_XX"
 tokenizer.tgt_lang = "ru_RU"
 model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
-print(f"model = {model}")
 
 
 def preprocess_function(examples):
@@ -94,8 +92,6 @@ def generator(data, batch_size, shuffle=False):
 
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
-print(f"raw_datasets_train = {raw_datasets_train}")
-print(f"raw_datasets_val = {raw_datasets_val}")
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
@@ -110,8 +106,6 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=0.9)
 
 butch_num = 10
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
-print(f"google_bleu = {google_bleu}")
-print(f"start_train")
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
 for i in range(n_epoch):
