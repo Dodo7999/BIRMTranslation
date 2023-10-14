@@ -1,3 +1,4 @@
+import logging
 import torch
 from transformers import MBartForConditionalGeneration
 from transformers import MBart50TokenizerFast
@@ -5,6 +6,8 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
+
+logging.basicConfig(level=logging.INFO)
 
 max_input_length = 56
 max_target_length = 56
@@ -17,7 +20,7 @@ print(f"device = {device}")
 torch.set_default_device(device)
 
 google_bleu = evaluate.load("google_bleu")
-
+print(f"google_bleu = {google_bleu}")
 model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 
 tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
