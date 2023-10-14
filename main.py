@@ -19,8 +19,6 @@ target_lang = "ru"
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
 
-google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
-print(f"google_bleu = {google_bleu}")
 model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 
 tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint, keep_in_memory=True)
@@ -112,6 +110,8 @@ opt = torch.optim.SGD(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=0.9)
 
 butch_num = 10
+google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
+print(f"google_bleu = {google_bleu}")
 print(f"start_train")
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
