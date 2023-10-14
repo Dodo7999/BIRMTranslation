@@ -21,11 +21,11 @@ torch.set_default_device(device)
 
 model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
 
-tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint, keep_in_memory=True)
+tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
 print(f"tokenizer = {tokenizer}")
 tokenizer.src_lang = "en_XX"
 tokenizer.tgt_lang = "ru_RU"
-model = MBartForConditionalGeneration.from_pretrained(model_checkpoint, keep_in_memory=True)
+model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
 print(f"model = {model}")
 
 
@@ -92,9 +92,8 @@ def generator(data, batch_size, shuffle=False):
         yield data[batch_ids]
 
 
-raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]', keep_in_memory=True)
-raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100),
-                                                                                            keep_in_memory=True)
+raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
+raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 print(f"raw_datasets_train = {raw_datasets_train}")
 print(f"raw_datasets_val = {raw_datasets_val}")
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
