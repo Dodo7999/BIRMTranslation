@@ -6,6 +6,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,6 +18,7 @@ target_lang = "ru"
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 print(f"torch.cuda.is_available() = {torch.cuda.is_available()}")
 print(f"device = {device}")
+print(os.path)
 torch.set_default_device(device)
 
 google_bleu = evaluate.load("google_bleu", cache_dir="/userspace/bma/.transformersCache")
