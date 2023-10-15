@@ -121,6 +121,7 @@ for i in range(n_epoch):
         opt.zero_grad()
         if index % 10000 == 0:
             print(f"epoch = {i}, loss = {loss}, batch_index = {index}")
+        index += 1
         # print(loss)
     scheduler.step()
     print(f"Epoch = {i}")
