@@ -118,7 +118,7 @@ for i in range(n_epoch):
         loss.backward()
         opt.step()
         opt.zero_grad()
-        print(loss)
+        # print(loss)
     scheduler.step()
     print(f"Epoch = {i}")
 
