@@ -100,7 +100,8 @@ val_targets = np.array(datasets_val['labels'], dtype=object)
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.SGD(model.parameters(), lr=0.001)
-scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=0.9)
+scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
+                                              base_lr=3e-6, max_lr=4e-4)
 
 butch_num = 10
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
@@ -119,11 +120,11 @@ for i in range(n_epoch):
         loss.backward()
         opt.step()
         opt.zero_grad()
+        scheduler.step()
         if index % 10000 == 0:
             print(f"epoch = {i}, loss = {loss}, batch_index = {index}")
         index += 1
         # print(loss)
-    scheduler.step()
     print(f"Epoch = {i}")
 
     model.eval()
