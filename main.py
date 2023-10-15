@@ -121,8 +121,13 @@ for i in range(n_epoch):
         opt.step()
         opt.zero_grad()
         scheduler.step()
-        if index % 10000 == 0:
-            print(f"epoch = {i}, loss = {loss}, batch_index = {index}")
+
+        if index % 1000 == 0:
+            t = torch.cuda.get_device_properties(0).total_memory
+            r = torch.cuda.memory_reserved(0)
+            a = torch.cuda.memory_allocated(0)
+            f = r - a
+            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
         index += 1
         # print(loss)
     print(f"Epoch = {i}")
