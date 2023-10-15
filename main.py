@@ -97,7 +97,7 @@ train_targets = np.array(datasets_train['labels'], dtype=object)
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
 val_targets = np.array(datasets_val['labels'], dtype=object)
 
-n_epoch = 10
+n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.SGD(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=0.9)
