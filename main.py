@@ -1,7 +1,7 @@
 import logging
 import torch
-from transformers import MBartForConditionalGeneration
-from transformers import MBart50TokenizerFast
+from transformers import AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer
 from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
@@ -16,12 +16,12 @@ target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
-model_checkpoint = "facebook/mbart-large-50-many-to-many-mmt"
+model_checkpoint = "google/mt5-small"
 
-tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
-tokenizer.src_lang = "en_XX"
-tokenizer.tgt_lang = "ru_RU"
-model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
+tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+# tokenizer.src_lang = "en_XX"
+# tokenizer.tgt_lang = "ru_RU"
+model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 
 def preprocess_function(examples):
@@ -99,7 +99,7 @@ val_targets = np.array(datasets_val['labels'], dtype=object)
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
-opt = torch.optim.SGD(model.parameters(), lr=0.001)
+opt = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
                                               base_lr=3e-6, max_lr=4e-4)
 
@@ -127,7 +127,7 @@ for i in range(n_epoch):
             r = torch.cuda.memory_reserved(0)
             a = torch.cuda.memory_allocated(0)
             f = r - a
-            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
+            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}" + "fdsdsd \n sdasd")
         index += 1
         # print(loss)
     print(f"Epoch = {i}")
