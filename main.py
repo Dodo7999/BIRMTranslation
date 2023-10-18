@@ -88,7 +88,7 @@ def generator(data, batch_size, shuffle=False):
 
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
-raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:10000]')
+raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(1000))
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
@@ -127,7 +127,7 @@ for i in range(n_epoch):
             r = torch.cuda.memory_reserved(0)
             a = torch.cuda.memory_allocated(0)
             f = r - a
-            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}" + "fdsdsd \n sdasd")
+            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
         index += 1
         # print(loss)
     print(f"Epoch = {i}")
@@ -142,4 +142,5 @@ for i in range(n_epoch):
             pred_seq += tokenizer.batch_decode(
                 model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
                                # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
+        print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
