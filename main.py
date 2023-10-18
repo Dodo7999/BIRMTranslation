@@ -9,8 +9,8 @@ import evaluate
 
 logging.basicConfig(level=logging.INFO)
 
-max_input_length = 56
-max_target_length = 56
+max_input_length = 150
+max_target_length = 150
 source_lang = "en"
 target_lang = "ru"
 
@@ -92,14 +92,14 @@ datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
 l = np.array([len(i) for i in train_inputs])
-train_inputs = train_inputs[l < 150]
+train_inputs = train_inputs[l < max_input_length]
 train_targets = np.array(datasets_train['labels'], dtype=object)
-train_targets = train_targets[l < 150]
+train_targets = train_targets[l < max_target_length]
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
 l = np.array([len(i) for i in val_inputs])
-val_inputs = val_inputs[l < 150]
+val_inputs = val_inputs[l < max_input_length]
 val_targets = np.array(datasets_val['labels'], dtype=object)
-val_targets = val_targets[l < 150]
+val_targets = val_targets[l < max_target_length]
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
@@ -135,16 +135,18 @@ for i in range(n_epoch):
             print(f"Count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 5000 == 0 and index > 0:
+        if index % 500 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
-                gen = generator(eval_loader, butch_num)
+                gen2 = generator(eval_loader, butch_num)
                 targets = []
                 pred_seq = []
-                for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
+                for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen2:
                     targets += tokenizer.batch_decode(decoder_input_ids)
                     pred_seq += tokenizer.batch_decode(
-                        model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=150))
+                        model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length))
+                print(targets)
+                print(pred_seq)
                 print(google_bleu.compute(predictions=pred_seq, references=targets))
 
         index += 1
@@ -158,6 +160,6 @@ for i in range(n_epoch):
         for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
             targets += tokenizer.batch_decode(decoder_input_ids)
             pred_seq += tokenizer.batch_decode(
-                model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=150))
+                model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length))
         print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
