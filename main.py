@@ -110,7 +110,7 @@ for i in range(n_epoch):
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
-                       decoder_attention_mask=decoder_attention_mask2).logits
+                       decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
         loss.backward()
         opt.step()
