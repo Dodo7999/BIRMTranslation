@@ -114,10 +114,22 @@ for i in range(n_epoch):
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
         print(index * butch_num)
         if index * butch_num > 4500:
-            print(input_ids)
-            print(attention_mask)
-            print(decoder_input_ids)
-            print(decoder_attention_mask)
+            print(input_ids[:5])
+            print(input_ids[5:10])
+            print(input_ids[10:15])
+            print(input_ids[15:20])
+            print(attention_mask[:5])
+            print(attention_mask[5:10])
+            print(attention_mask[10:15])
+            print(attention_mask[15:20])
+            print(decoder_input_ids[:5])
+            print(decoder_input_ids[5:10])
+            print(decoder_input_ids[10:15])
+            print(decoder_input_ids[15:20])
+            print(decoder_attention_mask[:5])
+            print(decoder_attention_mask[5:10])
+            print(decoder_attention_mask[10:15])
+            print(decoder_attention_mask[15:20])
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
