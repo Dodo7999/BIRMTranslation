@@ -111,9 +111,9 @@ for i in range(n_epoch):
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
         print(index*butch_num)
-        t = torch.cuda.get_device_properties(0).total_memory / 1048576 / 1024
-        r = torch.cuda.memory_reserved(0) / 1048576 / 1024
-        a = torch.cuda.memory_allocated(0) / 1048576 / 1024
+        t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
+        r = torch.cuda.memory_reserved(device) / 1048576 / 1024
+        a = torch.cuda.memory_allocated(device) / 1048576 / 1024
         f = r - a
         print(f"count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
