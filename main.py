@@ -6,8 +6,6 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-import subprocess
-import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,8 +19,6 @@ torch.set_default_device(device)
 model_checkpoint = "google/mt5-small"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-# tokenizer.src_lang = "en_XX"
-# tokenizer.tgt_lang = "ru_RU"
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 
@@ -120,11 +116,6 @@ for i in range(n_epoch):
         a = torch.cuda.memory_allocated(0) / 1048576 / 1024
         f = r - a
         print(f"count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
-        command = 'nvidia-smi'
-        p = subprocess.check_output(command)
-        ram_using = re.findall(r'\b\d+MiB+ /', str(p))[0][:-5]
-        ram_total = re.findall(r'/  \b\d+MiB', str(p))[0][3:-3]
-        ram_percent = int(ram_using) / int(ram_total)
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
