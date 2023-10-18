@@ -120,6 +120,7 @@ for i in range(n_epoch):
             decoder_attention_mask = decoder_attention_mask.cpu()
             model = model.cpu()
         else:
+            index += 1
             continue
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
