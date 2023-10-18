@@ -9,11 +9,10 @@ import evaluate
 
 logging.basicConfig(level=logging.INFO)
 
-max_input_length = 100
-max_target_length = 100
-source_lang = "ru"
-target_lang = "en"
-prefix = "translate Russian to English: "
+max_input_length = 128
+max_target_length = 128
+source_lang = "en"
+target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
@@ -24,19 +23,18 @@ model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 
 def preprocess_function(examples):
-    inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
+    inputs = [ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
     model_inputs = tokenizer(inputs, text_target=targets, max_length=128, truncation=True)
     return model_inputs
 
 
 class Loader(Dataset):
-    def __init__(self, inputs, labels, tokenizer, max_length=56):
+    def __init__(self, inputs, labels, tokenizer):
         self.labels = labels
         self.inputs = inputs
 
         self.tokenizer = tokenizer
-        self.max_length = max_length
 
     def __len__(self):
         return len(self.labels)
