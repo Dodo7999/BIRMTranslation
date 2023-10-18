@@ -107,7 +107,10 @@ opt = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
                                               base_lr=3e-6, max_lr=4e-4)
 
-butch_num = 20
+print(f"Count trainer data = {len(train_inputs)}")
+print(f"Count eval data = {len(val_inputs)}")
+
+butch_num = 100
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
@@ -116,12 +119,6 @@ for i in range(n_epoch):
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-        print(index*butch_num)
-        t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
-        r = torch.cuda.memory_reserved(device) / 1048576 / 1024
-        a = torch.cuda.memory_allocated(device) / 1048576 / 1024
-        f = r - a
-        print(f"count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
@@ -130,10 +127,15 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 1000 == 0:
-            print(f"epoch = {i}, loss = {loss}, batch_index = {index}")
+        if index % 100 == 0:
+            t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
+            r = torch.cuda.memory_reserved(device) / 1048576 / 1024
+            a = torch.cuda.memory_allocated(device) / 1048576 / 1024
+            f = r - a
+            print(f"Count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
+            print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 10000 == 0 and index > 0:
+        if index % 1000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 gen = generator(eval_loader, butch_num)
@@ -143,7 +145,6 @@ for i in range(n_epoch):
                     targets += tokenizer.batch_decode(decoder_input_ids)
                     pred_seq += tokenizer.batch_decode(
                         model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
-                    # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
                 print(google_bleu.compute(predictions=pred_seq, references=targets))
 
         index += 1
