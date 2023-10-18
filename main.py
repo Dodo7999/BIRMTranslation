@@ -110,7 +110,7 @@ scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='tria
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
 
-butch_num = 100
+butch_num = 20
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
@@ -127,7 +127,7 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 100 == 0:
+        if index % 50 == 0:
             t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
             r = torch.cuda.memory_reserved(device) / 1048576 / 1024
             a = torch.cuda.memory_allocated(device) / 1048576 / 1024
@@ -135,7 +135,7 @@ for i in range(n_epoch):
             print(f"Count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 1000 == 0 and index > 0:
+        if index % 5000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 gen = generator(eval_loader, butch_num)
