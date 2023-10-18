@@ -6,9 +6,9 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-from pynvml import *
+import subprocess
+import re
 
-nvmlInit()
 logging.basicConfig(level=logging.INFO)
 
 max_input_length = 56
@@ -18,9 +18,6 @@ target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
-h = nvmlDeviceGetHandleByIndex(0)
-info = nvmlDeviceGetMemoryInfo(h)
-
 model_checkpoint = "google/mt5-small"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -108,7 +105,7 @@ opt = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
                                               base_lr=3e-6, max_lr=4e-4)
 
-butch_num = 20
+butch_num = 40
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
@@ -117,9 +114,17 @@ for i in range(n_epoch):
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-        print(f'total    : {info.total}')
-        print(f'free     : {info.free}')
-        print(f'used     : {info.used}')
+        print(index*butch_num)
+        t = torch.cuda.get_device_properties(0).total_memory / 1048576 / 1024
+        r = torch.cuda.memory_reserved(0) / 1048576 / 1024
+        a = torch.cuda.memory_allocated(0) / 1048576 / 1024
+        f = r - a
+        print(f"count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
+        command = 'nvidia-smi'
+        p = subprocess.check_output(command)
+        ram_using = re.findall(r'\b\d+MiB+ /', str(p))[0][:-5]
+        ram_total = re.findall(r'/  \b\d+MiB', str(p))[0][3:-3]
+        ram_percent = int(ram_using) / int(ram_total)
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
@@ -128,8 +133,12 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        # if index % 1000 == 0:
-        print(f"epoch = {i}, loss = {loss}, count_data = {index*butch_num}")
+        if index % 1000 == 0:
+            t = torch.cuda.get_device_properties(0).total_memory
+            r = torch.cuda.memory_reserved(0)
+            a = torch.cuda.memory_allocated(0)
+            f = r - a
+            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
 
         if index % 10000 == 0 and index > 0:
             with torch.no_grad():
