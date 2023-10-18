@@ -88,8 +88,8 @@ def generator(data, batch_size, shuffle=False):
 
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
-raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000]')
-raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(1000))
+raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000000]')
+raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train']
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
@@ -103,7 +103,7 @@ opt = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
                                               base_lr=3e-6, max_lr=4e-4)
 
-butch_num = 10
+butch_num = 20
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
