@@ -92,12 +92,12 @@ datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
 print(train_inputs[:10])
-l = np.arange([len(i) for i in train_inputs])
+l = np.arange([len(i[0]) for i in train_inputs])
 train_inputs = train_inputs[l < 150]
 train_targets = np.array(datasets_train['labels'], dtype=object)
 train_targets = train_targets[l < 150]
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
-l = np.arange([len(i) for i in val_inputs])
+l = np.arange([len(i[0]) for i in val_inputs])
 val_inputs = val_inputs[l < 150]
 val_targets = np.array(datasets_val['labels'], dtype=object)
 val_targets = val_targets[l < 150]
