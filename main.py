@@ -112,20 +112,19 @@ for i in range(n_epoch):
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-        print(index*butch_num)
-        try:
-            logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
-                           decoder_attention_mask=decoder_attention_mask).logits
-            loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
-            loss.backward()
-            opt.step()
-            opt.zero_grad()
-            scheduler.step()
-        except:
+        print(index * butch_num)
+        if index * butch_num > 4500:
             print(input_ids)
             print(attention_mask)
             print(decoder_input_ids)
             print(decoder_attention_mask)
+        logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
+                       decoder_attention_mask=decoder_attention_mask).logits
+        loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
+        loss.backward()
+        opt.step()
+        opt.zero_grad()
+        scheduler.step()
 
         if index % 1000 == 0:
             t = torch.cuda.get_device_properties(0).total_memory
@@ -159,6 +158,6 @@ for i in range(n_epoch):
             targets += tokenizer.batch_decode(decoder_input_ids)
             pred_seq += tokenizer.batch_decode(
                 model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
-                               # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
+            # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
         print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
