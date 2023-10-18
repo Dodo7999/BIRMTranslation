@@ -11,9 +11,9 @@ logging.basicConfig(level=logging.INFO)
 
 max_input_length = 100
 max_target_length = 100
-source_lang = "en"
-target_lang = "ru"
-prefix = "translate English to Russian: "
+source_lang = "ru"
+target_lang = "en"
+prefix = "translate Russian to English: "
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
