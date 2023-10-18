@@ -142,9 +142,9 @@ for i in range(n_epoch):
                 targets = []
                 pred_seq = []
                 for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen2:
-                    targets += tokenizer.batch_decode(decoder_input_ids)
+                    targets += tokenizer.batch_decode(decoder_input_ids, skip_special_tokens=True)
                     pred_seq += tokenizer.batch_decode(
-                        model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length))
+                        model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length), skip_special_tokens=True)
                 print(targets[:10])
                 print(pred_seq[:10])
                 print(google_bleu.compute(predictions=pred_seq, references=targets))
