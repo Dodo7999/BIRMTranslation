@@ -15,7 +15,7 @@ source_lang = "en"
 target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-torch.set_default_device(device)
+# torch.set_default_device(device)
 model_checkpoint = "google/mt5-small"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
