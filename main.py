@@ -91,9 +91,15 @@ raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['tra
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
+l = np.arange([len(i) for i in train_inputs])
+train_inputs = train_inputs[l < 150]
 train_targets = np.array(datasets_train['labels'], dtype=object)
+train_targets = train_targets[l < 150]
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
+l = np.arange([len(i) for i in val_inputs])
+val_inputs = val_inputs[l < 150]
 val_targets = np.array(datasets_val['labels'], dtype=object)
+val_targets = val_targets[l < 150]
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
@@ -101,7 +107,7 @@ opt = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
                                               base_lr=3e-6, max_lr=4e-4)
 
-butch_num = 10
+butch_num = 20
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=tokenizer)
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
@@ -125,11 +131,7 @@ for i in range(n_epoch):
         scheduler.step()
 
         if index % 1000 == 0:
-            t = torch.cuda.get_device_properties(0).total_memory
-            r = torch.cuda.memory_reserved(0)
-            a = torch.cuda.memory_allocated(0)
-            f = r - a
-            print(f"epoch = {i}, loss = {loss}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
+            print(f"epoch = {i}, loss = {loss}, batch_index = {index}")
 
         if index % 10000 == 0 and index > 0:
             with torch.no_grad():
