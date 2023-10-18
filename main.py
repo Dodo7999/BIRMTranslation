@@ -140,6 +140,6 @@ for i in range(n_epoch):
         for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
             targets += tokenizer.batch_decode(decoder_input_ids)
             pred_seq += tokenizer.batch_decode(
-                model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56,
-                               forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]))
+                model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
+                               # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
         print(google_bleu.compute(predictions=pred_seq, references=targets))
