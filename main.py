@@ -9,10 +9,11 @@ import evaluate
 
 logging.basicConfig(level=logging.INFO)
 
-max_input_length = 150
-max_target_length = 150
+max_input_length = 100
+max_target_length = 100
 source_lang = "en"
 target_lang = "ru"
+prefix = "translate English to Russian: "
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
@@ -23,14 +24,9 @@ model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 
 def preprocess_function(examples):
-    inputs = [ex[source_lang] for ex in examples["translation"]]
+    inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = tokenizer(inputs)
-
-    with tokenizer.as_target_tokenizer():
-        labels = tokenizer(targets)
-
-    model_inputs["labels"] = labels["input_ids"]
+    model_inputs = tokenizer(inputs, text_target=targets, max_length=128, truncation=True)
     return model_inputs
 
 
@@ -91,15 +87,9 @@ raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['tra
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
-l = np.array([len(i) for i in train_inputs])
-train_inputs = train_inputs[l < max_input_length]
 train_targets = np.array(datasets_train['labels'], dtype=object)
-train_targets = train_targets[l < max_target_length]
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
-l = np.array([len(i) for i in val_inputs])
-val_inputs = val_inputs[l < max_input_length]
 val_targets = np.array(datasets_val['labels'], dtype=object)
-val_targets = val_targets[l < max_target_length]
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
@@ -120,7 +110,7 @@ for i in range(n_epoch):
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
-                       decoder_attention_mask=decoder_attention_mask).logits
+                       decoder_attention_mask=decoder_attention_mask2).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
         loss.backward()
         opt.step()
@@ -141,10 +131,11 @@ for i in range(n_epoch):
                 gen2 = generator(eval_loader, butch_num)
                 targets = []
                 pred_seq = []
-                for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen2:
-                    targets += tokenizer.batch_decode(decoder_input_ids, skip_special_tokens=True)
+                for input_ids2, attention_mask2, decoder_input_ids2, decoder_attention_mask2 in gen2:
+                    targets += tokenizer.batch_decode(decoder_input_ids2, skip_special_tokens=True)
                     pred_seq += tokenizer.batch_decode(
-                        model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length), skip_special_tokens=True)
+                        model.generate(input_ids=input_ids2, attention_mask=attention_mask2,
+                                       max_length=max_target_length), skip_special_tokens=True)
                 print(targets[:10])
                 print(pred_seq[:10])
                 print(google_bleu.compute(predictions=pred_seq, references=targets))
@@ -157,9 +148,9 @@ for i in range(n_epoch):
         gen = generator(eval_loader, butch_num)
         targets = []
         pred_seq = []
-        for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-            targets += tokenizer.batch_decode(decoder_input_ids)
+        for input_ids2, attention_mask2, decoder_input_ids2, decoder_attention_mask2 in gen:
+            targets += tokenizer.batch_decode(decoder_input_ids2)
             pred_seq += tokenizer.batch_decode(
-                model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=max_target_length))
+                model.generate(input_ids=input_ids2, attention_mask=attention_mask2, max_length=max_target_length))
         print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
