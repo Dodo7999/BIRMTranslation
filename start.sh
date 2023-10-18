@@ -4,7 +4,7 @@
 #SBATCH --error=/userspace/bma/bsl_shift_err.log
 #SBATCH --output=/userspace/bma/bsl_shift.log
 #SBATCH --partition=a100
-#SBATCH --nodelist=ngpu04
+#SBATCH --nodelist=ngpu01
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
