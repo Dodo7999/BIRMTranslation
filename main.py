@@ -113,13 +113,19 @@ for i in range(n_epoch):
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
         print(index*butch_num)
-        logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
-                       decoder_attention_mask=decoder_attention_mask).logits
-        loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
-        loss.backward()
-        opt.step()
-        opt.zero_grad()
-        scheduler.step()
+        try:
+            logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
+                           decoder_attention_mask=decoder_attention_mask).logits
+            loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
+            loss.backward()
+            opt.step()
+            opt.zero_grad()
+            scheduler.step()
+        except:
+            print(input_ids)
+            print(attention_mask)
+            print(decoder_input_ids)
+            print(decoder_attention_mask)
 
         if index % 1000 == 0:
             t = torch.cuda.get_device_properties(0).total_memory
