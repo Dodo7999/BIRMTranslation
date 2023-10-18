@@ -17,7 +17,7 @@ prefix = "translate Russian to English: "
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
-model_checkpoint = "google/mt5-base"
+model_checkpoint = "google/mt5-small"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
@@ -31,7 +31,7 @@ def preprocess_function(examples):
 
 
 class Loader(Dataset):
-    def __init__(self, inputs, labels, tokenizer, max_length=56, transform=None, target_transform=None):
+    def __init__(self, inputs, labels, tokenizer, max_length=56):
         self.labels = labels
         self.inputs = inputs
 
