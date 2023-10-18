@@ -109,11 +109,10 @@ train_loader = Loader(inputs=train_inputs, labels=train_targets, tokenizer=token
 eval_loader = Loader(inputs=val_inputs, labels=val_targets, tokenizer=tokenizer)
 for i in range(n_epoch):
     model.train()
-    idx = 0
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-        idx += 1
+        print(index*butch_num)
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
@@ -140,7 +139,6 @@ for i in range(n_epoch):
                     pred_seq += tokenizer.batch_decode(
                         model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
                     # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
-                print(pred_seq)
                 print(google_bleu.compute(predictions=pred_seq, references=targets))
 
         index += 1
