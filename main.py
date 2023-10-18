@@ -15,7 +15,7 @@ source_lang = "en"
 target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-# torch.set_default_device(device)
+torch.set_default_device(device)
 model_checkpoint = "google/mt5-small"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -112,16 +112,13 @@ for i in range(n_epoch):
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
-        print(index * butch_num)
-        if index * butch_num > 4600:
-            input_ids = input_ids.cpu()
-            attention_mask = attention_mask.cpu()
-            decoder_input_ids = decoder_input_ids.cpu()
-            decoder_attention_mask = decoder_attention_mask.cpu()
-            model = model.cpu()
-        else:
-            index += 1
-            continue
+        print(index*butch_num)
+        if index * butch_num > 4500:
+            t = torch.cuda.get_device_properties(0).total_memory / 1048576
+            r = torch.cuda.memory_reserved(0) / 1048576
+            a = torch.cuda.memory_allocated(0) / 1048576
+            f = r - a
+            print(f"epoch = {index * butch_num}, batch_index = {index}, t = {t}, r = {r}, a = {a}, f = {f}")
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
@@ -162,6 +159,6 @@ for i in range(n_epoch):
             targets += tokenizer.batch_decode(decoder_input_ids)
             pred_seq += tokenizer.batch_decode(
                 model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=56))
-            # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
+                               # forced_bos_token_id=tokenizer.lang_code_to_id["ru_RU"]
         print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
