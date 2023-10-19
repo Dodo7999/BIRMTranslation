@@ -91,9 +91,9 @@ val_targets = np.array(datasets_val['labels'], dtype=object)
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
-opt = torch.optim.Adam(model.parameters(), lr=0.001)
-scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=5000, mode='triangular2', cycle_momentum=False,
-                                              base_lr=3e-6, max_lr=4e-4)
+opt = torch.optim.AdamW(model.parameters(), lr=0.001)
+scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='triangular2', cycle_momentum=False,
+                                              base_lr=2e-6, max_lr=2e-4)
 
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
