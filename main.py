@@ -117,7 +117,7 @@ for i in range(n_epoch):
 
         if index % 50 == 0:
             print(tokenizer.batch_decode(decoder_input_ids, skip_special_tokens=True))
-            print(tokenizer.batch_decode(torch.softmax(logits, dim=2), skip_special_tokens=True))
+            print(tokenizer.batch_decode(torch.argmax(logits, dim=2), skip_special_tokens=True))
             t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
             r = torch.cuda.memory_reserved(device) / 1048576 / 1024
             a = torch.cuda.memory_allocated(device) / 1048576 / 1024
