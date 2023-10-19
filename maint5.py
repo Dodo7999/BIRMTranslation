@@ -9,8 +9,8 @@ import evaluate
 
 logging.basicConfig(level=logging.INFO)
 
-max_input_length = 128
-max_target_length = 128
+max_input_length = 100
+max_target_length = 100
 source_lang = "en"
 target_lang = "ru"
 
@@ -25,7 +25,12 @@ model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 def preprocess_function(examples):
     inputs = [ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = tokenizer(inputs, text_target=targets, max_length=128, truncation=True)
+    model_inputs = tokenizer(inputs)
+
+    with tokenizer.as_target_tokenizer():
+        labels = tokenizer(targets)
+
+    model_inputs["labels"] = labels["input_ids"]
     return model_inputs
 
 
@@ -85,9 +90,15 @@ raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['tra
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
+l = np.array([len(i) for i in train_inputs])
+train_inputs = train_inputs[l < max_input_length]
 train_targets = np.array(datasets_train['labels'], dtype=object)
+train_targets = train_targets[l < max_target_length]
 val_inputs = np.array(datasets_val['input_ids'], dtype=object)
+l = np.array([len(i) for i in val_inputs])
+val_inputs = val_inputs[l < max_input_length]
 val_targets = np.array(datasets_val['labels'], dtype=object)
+val_targets = val_targets[l < max_target_length]
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
