@@ -107,6 +107,7 @@ for i in range(n_epoch):
     gen = generator(train_loader, butch_num)
     index = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in gen:
+        decoder_input_ids = model._shift_right(decoder_input_ids)
         logits = model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids,
                        decoder_attention_mask=decoder_attention_mask).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
