@@ -6,10 +6,6 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-import random
-import pandas as pd
-from IPython.display import display, HTML
-import datasets
 
 logging.basicConfig(level=logging.INFO)
 
@@ -83,26 +79,9 @@ def generator(data, batch_size, shuffle=False):
         yield data[batch_ids]
 
 
-def show_random_elements(dataset, num_examples=100):
-    picks = []
-    for _ in range(num_examples):
-        pick = random.randint(0, len(dataset) - 1)
-        while pick in picks:
-            pick = random.randint(0, len(dataset) - 1)
-        picks.append(pick)
-
-    df = pd.DataFrame(dataset[picks])
-    for column, typ in dataset.features.items():
-        if isinstance(typ, datasets.ClassLabel):
-            df[column] = df[column].transform(lambda i: typ.names[i])
-    display(HTML(df.to_html()))
-
-
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("wmt19", "ru-en", split='train[:1000000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train']
-show_random_elements(raw_datasets_train)
-show_random_elements(raw_datasets_val)
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
