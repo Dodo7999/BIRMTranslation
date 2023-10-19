@@ -80,7 +80,7 @@ def generator(data, batch_size, shuffle=False):
 
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
-raw_datasets_train =  load_dataset("opus100", "en-ru")
+raw_datasets_train =  load_dataset("opus100", "en-ru", split='train[:100000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train']
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
