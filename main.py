@@ -81,7 +81,7 @@ def generator(data, batch_size, shuffle=False):
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train =  load_dataset("opus100", "en-ru", split='train[:1000000]')
-raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train']
+raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(1000))
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
 train_inputs = np.array(datasets_train['input_ids'], dtype=object)
@@ -91,7 +91,7 @@ val_targets = np.array(datasets_val['labels'], dtype=object)
 
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
-opt = torch.optim.AdamW(model.parameters(), lr=0.001)
+opt = torch.optim.AdamW(model.parameters())
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='triangular2', cycle_momentum=False,
                                               base_lr=2e-6, max_lr=2e-4)
 
@@ -111,6 +111,7 @@ for i in range(n_epoch):
                        decoder_attention_mask=model._shift_right(decoder_attention_mask)).logits
         loss = cel(logits.permute(0, 2, 1), decoder_input_ids.masked_fill(decoder_attention_mask != 1, -100))
         loss.backward()
+        torch.nn.utils.clip_grad_norm(model.parameters(), 0.1)
         opt.step()
         opt.zero_grad()
         scheduler.step()
@@ -123,7 +124,7 @@ for i in range(n_epoch):
             print(f"Count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 5000 == 0 and index > 0:
+        if index % 1000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 gen2 = generator(eval_loader, butch_num)
