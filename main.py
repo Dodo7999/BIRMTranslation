@@ -119,11 +119,11 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 50 == 0:
+        if index * butch_num % 1000 == 0:
             print(f"Count = {index * butch_num}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 5000 == 0 and index > 0:
+        if index * butch_num % 25000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 gen2 = generator(eval_loader, butch_num)
