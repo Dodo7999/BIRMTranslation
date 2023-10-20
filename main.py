@@ -80,7 +80,7 @@ def generator(data, batch_size, shuffle=False):
 
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
-raw_datasets_train =  load_dataset("opus100", "en-ru", split='train[:1000000]')
+raw_datasets_train =  load_dataset("opus100", "en-ru", split='train[:100000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(1000))
 datasets_train = raw_datasets_train.map(preprocess_function, batched=True)
 datasets_val = raw_datasets_val.map(preprocess_function, batched=True)
@@ -116,7 +116,7 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 500 == 0:
+        if index % 50 == 0:
             t = torch.cuda.get_device_properties(device).total_memory / 1048576 / 1024
             r = torch.cuda.memory_reserved(device) / 1048576 / 1024
             a = torch.cuda.memory_allocated(device) / 1048576 / 1024
@@ -124,7 +124,7 @@ for i in range(n_epoch):
             print(f"Count = {index * butch_num}, t = {t}, r = {r}, a = {a}, f = {f}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
 
-        if index % 1000 == 0 and index > 0:
+        if index % 500 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 gen2 = generator(eval_loader, butch_num)
