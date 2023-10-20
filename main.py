@@ -16,7 +16,7 @@ target_lang = "ru"
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 torch.set_default_device(device)
-model_checkpoint = "google/mt5-small"
+model_checkpoint = "google/mt5-base"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
