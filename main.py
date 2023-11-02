@@ -164,8 +164,8 @@ with torch.no_grad():
             print(len(clusters_prob))
         ind += 1
 
-clusters = KMeans(n_clusters=12).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
-
+clusters = KMeans(n_clusters=5).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
+batch_size = 5
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = MyDataLoader(
     loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
