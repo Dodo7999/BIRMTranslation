@@ -202,11 +202,11 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index * batch_size % 1000 == 0:
+        if index * batch_size**2 % 1000 == 0:
             print(f"Count = {index * batch_size}")
             print(f"Epoch = {i}, loss = {loss}, penalty = {penalty}, batch_index = {index}")
 
-        if index * batch_size % 25000 == 0 and index > 0:
+        if index * batch_size**2 % 25000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 targets = []
