@@ -124,10 +124,10 @@ tokenizer_cluster = XLMRobertaTokenizerFast.from_pretrained('SkolkovoInstitute/x
 model_cluster = XLMRobertaForSequenceClassification.from_pretrained('SkolkovoInstitute/xlmr_formality_classifier')
 
 # prepare the input
-batch = tokenizer_cluster.encode('ты супер', return_tensors='pt')
+batch = tokenizer_cluster.encode('hello my friend', return_tensors='pt')
 
 # inference
-print(model_cluster(batch))
+print(torch.nn.functional.softmax(model_cluster(batch).logits))
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
