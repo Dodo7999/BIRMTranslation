@@ -158,7 +158,7 @@ with torch.no_grad():
     model_cluster.eval()
     ind = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
-        probability = torch.nn.functional.softmax(model_cluster(batch).logits).detach().cpu().numpy()[:, 0].tolist()
+        probability = torch.nn.functional.softmax(model_cluster(batch).logits).detach().cpu().numpy()
         print(probability)
         clusters_prob += probability
         if ind % 1000 == 0:
