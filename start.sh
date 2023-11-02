@@ -32,6 +32,6 @@ nvidia-smi -L
 nvcc -V
 python -V
 python -c "import torch, transformers, datasets, tokenizers; print(f'torch.version = {torch.__version__}, CUDA = {torch.cuda.is_available()}, transformers.version = {transformers.__version__}, datasets.version = {datasets.__version__}, tokenizers.version = {tokenizers.__version__}')"
-
+pip3 install scikit-learn
 python -u main.py
 
