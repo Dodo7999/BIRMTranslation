@@ -127,7 +127,7 @@ model_cluster = XLMRobertaForSequenceClassification.from_pretrained('SkolkovoIns
 batch = tokenizer_cluster.encode('ты супер', return_tensors='pt')
 
 # inference
-print(model(batch))
+print(model_cluster(batch))
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
