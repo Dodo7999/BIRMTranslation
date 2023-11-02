@@ -49,7 +49,7 @@ def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
         np.random.shuffle(ids)
     for i in range(batch_num):
         batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
-        yield data_env[0][batch_ids], data_env[1][batch_ids]
+        yield data_env[0][batch_ids], data_env[1][batch_ids], data_env[2][batch_ids], data_env[3][batch_ids]
 
 
 def generatorWithEnviroment(data, batch_size, clusters, shuffle=False):
