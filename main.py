@@ -6,6 +6,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
+from sklearn.cluster import KMeans
 from transformers import XLMRobertaTokenizerFast, XLMRobertaForSequenceClassification
 
 logging.basicConfig(level=logging.INFO)
@@ -149,23 +150,48 @@ print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
 
 batch_size = 20
+cluster_loader = MyDataLoader(
+    loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer_cluster),
+    batch_size2=batch_size, shuffle=True)
+clusters_prob = []
+with torch.no_grad():
+    model_cluster.eval()
+    for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
+        probability = torch.nn.functional.softmax(model_cluster(batch).logits).detach().cpu().item()[:, 0]
+        clusters_prob += probability
+
+clusters = KMeans(n_clusters=12).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
+
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = MyDataLoader(
     loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
-    batch_size2=batch_size, shuffle=True)
+    batch_size2=batch_size, clusters=clusters, shuffle=True)
 eval_loader = MyDataLoader(
     loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
     batch_size2=batch_size, shuffle=True)
 for i in range(n_epoch):
     model.train()
     index = 0
-    for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in train_loader:
-        loss = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            decoder_attention_mask=decoder_attention_mask,
-            labels=decoder_input_ids,
-        ).loss
+    # for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in train_loader:
+    #     loss = model(
+    #         input_ids=input_ids,
+    #         attention_mask=attention_mask,
+    #         decoder_attention_mask=decoder_attention_mask,
+    #         labels=decoder_input_ids,
+    #     ).loss
+    for envs in train_loader:
+        loss_list = []
+        penalty = 0
+        for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in envs:
+            loss_list.append(model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                decoder_attention_mask=decoder_attention_mask,
+                labels=decoder_input_ids,
+            ).loss)
+        loss_t = torch.stack(loss_list)
+        penalty = ((loss_t - loss_t.mean()) ** 2).sum()
+        loss = loss_t.sum() + penalty
         loss.backward()
         torch.nn.utils.clip_grad_norm(model.parameters(), 0.1)
         opt.step()
@@ -174,7 +200,7 @@ for i in range(n_epoch):
 
         if index * batch_size % 1000 == 0:
             print(f"Count = {index * batch_size}")
-            print(f"Epoch = {i}, loss = {loss}, batch_index = {index}")
+            print(f"Epoch = {i}, loss = {loss}, penalty = {penalty}, batch_index = {index}")
 
         if index * batch_size % 25000 == 0 and index > 0:
             with torch.no_grad():
@@ -199,8 +225,9 @@ for i in range(n_epoch):
         targets = []
         pred_seq = []
         for input_ids2, attention_mask2, decoder_input_ids2, decoder_attention_mask2 in eval_loader:
-            targets += tokenizer.batch_decode(decoder_input_ids2)
+            targets += tokenizer.batch_decode(decoder_input_ids2, skip_special_tokens=True)
             pred_seq += tokenizer.batch_decode(
-                model.generate(input_ids=input_ids2, attention_mask=attention_mask2, max_length=max_target_length))
+                model.generate(input_ids=input_ids2, attention_mask=attention_mask2, max_length=max_target_length),
+                skip_special_tokens=True)
         print(pred_seq)
         print(google_bleu.compute(predictions=pred_seq, references=targets))
