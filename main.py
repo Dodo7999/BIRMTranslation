@@ -157,7 +157,7 @@ clusters_prob = []
 with torch.no_grad():
     model_cluster.eval()
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
-        probability = torch.nn.functional.softmax(model_cluster(batch).logits).detach().cpu().item()[:, 0]
+        probability = torch.nn.functional.softmax(model_cluster(batch).logits).detach().cpu().numpy()[:, 0].tolist()
         clusters_prob += probability
 
 clusters = KMeans(n_clusters=12).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
