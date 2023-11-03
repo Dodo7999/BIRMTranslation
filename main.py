@@ -144,7 +144,7 @@ n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters())
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='triangular2', cycle_momentum=False,
-                                              base_lr=2e-6, max_lr=2e-4)
+                                              base_lr=2e-6, max_lr=1e-4)
 
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
@@ -163,8 +163,8 @@ with torch.no_grad():
         if ind % 1000 == 0:
             print(len(clusters_prob))
         ind += 1
-
-clusters = KMeans(n_clusters=5).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
+n_clusters = 4
+clusters = KMeans(n_clusters=4).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
 batch_size = 5
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = MyDataLoader(
@@ -202,11 +202,11 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index * batch_size**2 % 1000 == 0:
-            print(f"Count = {index * batch_size}")
+        if index * batch_size*n_clusters % 1000 == 0:
+            print(f"Count = {index * batch_size*n_clusters}")
             print(f"Epoch = {i}, loss = {loss}, penalty = {penalty}, batch_index = {index}")
 
-        if index * batch_size**2 % 25000 == 0 and index > 0:
+        if index * batch_size*n_clusters % 25000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 targets = []
