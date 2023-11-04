@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --job-name=bsl_shift_T5
+#SBATCH --job-name=birm_all
 #SBATCH --error=/userspace/bma/bsl_shift_err_t5.log
 #SBATCH --output=/userspace/bma/bsl_shift_t5.log
 #SBATCH --partition=a100
