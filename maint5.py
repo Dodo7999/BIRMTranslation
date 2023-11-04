@@ -146,7 +146,7 @@ with torch.no_grad():
     model.encoder.eval()
     ind = 0
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
-        probability = model.encoder(input_ids=input_ids, attention_mask=attention_mask).detach().cpu().numpy().tolist()
+        probability = model.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.detach().cpu().numpy().tolist()
         clusters_prob += probability
         if ind % 1000 == 0:
             print(len(clusters_prob))
