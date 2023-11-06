@@ -144,11 +144,9 @@ cluster_loader = MyDataLoader(
 clusters_prob = []
 with torch.no_grad():
     model.encoder.eval()
-    ind = 0
+    ind = 1
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
         probability = model.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.mean(dim = 1).detach().cpu().numpy().tolist()
-        if ind == 0:
-            print(np.array(probability).shape)
         clusters_prob += probability
         if ind % 1000 == 0:
             print(len(clusters_prob))
