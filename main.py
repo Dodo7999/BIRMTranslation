@@ -6,7 +6,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-from transformers import BertTokenizer, TFBertModel
+from transformers import BertTokenizer, BertModel
 from sklearn.cluster import KMeans
 
 logging.basicConfig(level=logging.INFO)
@@ -121,7 +121,7 @@ class Loader(Dataset):
 
 
 tokenizer_cluster = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-model_cluster = TFBertModel.from_pretrained("bert-base-multilingual-cased")
+model_cluster = BertModel.from_pretrained("bert-base-multilingual-cased")
 text = "Replace me by any text you'd like."
 encoded_input = tokenizer(text, return_tensors='tf')
 output = model(encoded_input)
