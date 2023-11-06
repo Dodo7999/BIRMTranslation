@@ -6,8 +6,8 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
+from transformers import BertTokenizer, TFBertModel
 from sklearn.cluster import KMeans
-from transformers import XLMRobertaTokenizerFast, XLMRobertaForSequenceClassification
 
 logging.basicConfig(level=logging.INFO)
 
@@ -120,15 +120,12 @@ class Loader(Dataset):
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
 
-# load tokenizer and model weights
-tokenizer_cluster = XLMRobertaTokenizerFast.from_pretrained('SkolkovoInstitute/xlmr_formality_classifier')
-model_cluster = XLMRobertaForSequenceClassification.from_pretrained('SkolkovoInstitute/xlmr_formality_classifier')
-
-# prepare the input
-batch = tokenizer_cluster.encode('hello my friend', return_tensors='pt')
-
-# inference
-print(torch.nn.functional.softmax(model_cluster(batch).logits))
+tokenizer_cluster = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
+model_cluster = TFBertModel.from_pretrained("bert-base-multilingual-cased")
+text = "Replace me by any text you'd like."
+encoded_input = tokenizer(text, return_tensors='tf')
+output = model(encoded_input)
+print(output.shape)
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
@@ -144,7 +141,7 @@ n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters())
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='triangular2', cycle_momentum=False,
-                                              base_lr=2e-6, max_lr=1e-4)
+                                              base_lr=1e-6, max_lr=2e-4)
 
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
@@ -202,11 +199,11 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index * batch_size*n_clusters % 1000 == 0:
-            print(f"Count = {index * batch_size*n_clusters}")
+        if index * batch_size * n_clusters % 1000 == 0:
+            print(f"Count = {index * batch_size * n_clusters}")
             print(f"Epoch = {i}, loss = {loss}, penalty = {penalty}, batch_index = {index}")
 
-        if index * batch_size*n_clusters % 25000 == 0 and index > 0:
+        if index * batch_size * n_clusters % 25000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 targets = []
