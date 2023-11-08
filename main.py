@@ -6,8 +6,8 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 import numpy as np
 import evaluate
-from transformers import BertTokenizer, BertModel
 from sklearn.cluster import KMeans
+from transformers import AutoTokenizer, AutoModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -120,8 +120,8 @@ class Loader(Dataset):
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
 
-tokenizer_cluster = BertTokenizer.from_pretrained('bert-large-cased')
-model_cluster = BertModel.from_pretrained("bert-large-cased")
+tokenizer_cluster = AutoTokenizer.from_pretrained("sentence-transformers/msmarco-bert-base-dot-v5")
+model_cluster = AutoModel.from_pretrained("sentence-transformers/msmarco-bert-base-dot-v5")
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
@@ -151,7 +151,8 @@ with torch.no_grad():
     model.encoder.eval()
     ind = 1
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
-        probability = model_cluster(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.mean(dim = 1).detach().cpu().numpy().tolist()
+        probability = model_cluster(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.mean(
+            dim=1).detach().cpu().numpy().tolist()
         clusters_prob += probability
         if ind % 1000 == 0:
             print(len(clusters_prob))
