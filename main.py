@@ -7,7 +7,6 @@ from torch.utils.data import Dataset
 import numpy as np
 import evaluate
 from sklearn.cluster import KMeans
-from transformers import AutoTokenizer, AutoModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -119,10 +118,6 @@ class Loader(Dataset):
 
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
-
-tokenizer_cluster = AutoTokenizer.from_pretrained("sentence-transformers/msmarco-bert-base-dot-v5")
-model_cluster = AutoModel.from_pretrained("sentence-transformers/msmarco-bert-base-dot-v5")
-
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
 raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train']
@@ -137,28 +132,27 @@ n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters())
 scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='triangular2', cycle_momentum=False,
-                                              base_lr=1e-6, max_lr=2e-4)
+                                              base_lr=2e-6, max_lr=1e-4)
 
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
 
 batch_size = 20
 cluster_loader = MyDataLoader(
-    loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer_cluster),
+    loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
     batch_size2=batch_size, shuffle=True)
 clusters_prob = []
 with torch.no_grad():
     model.encoder.eval()
     ind = 1
     for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in cluster_loader:
-        probability = model_cluster(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.mean(
-            dim=1).detach().cpu().numpy().tolist()
+        probability = model.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.mean(dim = 1).detach().cpu().numpy().tolist()
         clusters_prob += probability
         if ind % 1000 == 0:
             print(len(clusters_prob))
         ind += 1
-n_clusters = 4
-clusters = KMeans(n_clusters=4).fit(np.array(clusters_prob).reshape(-1, 1)).labels_
+n_clusters = 5
+clusters = KMeans(n_clusters=n_clusters).fit(np.array(clusters_prob)).labels_
 batch_size = 5
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 train_loader = MyDataLoader(
@@ -170,14 +164,8 @@ eval_loader = MyDataLoader(
 for i in range(n_epoch):
     model.train()
     index = 0
-    # for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in train_loader:
-    #     loss = model(
-    #         input_ids=input_ids,
-    #         attention_mask=attention_mask,
-    #         decoder_attention_mask=decoder_attention_mask,
-    #         labels=decoder_input_ids,
-    #     ).loss
     for envs in train_loader:
+        model.train()
         loss_list = []
         penalty = 0
         for input_ids, attention_mask, decoder_input_ids, decoder_attention_mask in envs:
@@ -189,18 +177,18 @@ for i in range(n_epoch):
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
-        loss = loss_t.sum() + penalty
+        loss = loss_t.sum() + 10.0 * penalty
         loss.backward()
         torch.nn.utils.clip_grad_norm(model.parameters(), 0.1)
         opt.step()
         opt.zero_grad()
         scheduler.step()
 
-        if index * batch_size * n_clusters % 1000 == 0:
-            print(f"Count = {index * batch_size * n_clusters}")
+        if index * batch_size*n_clusters % 1000 == 0:
+            print(f"Count = {index * batch_size*n_clusters}")
             print(f"Epoch = {i}, loss = {loss}, penalty = {penalty}, batch_index = {index}")
 
-        if index * batch_size * n_clusters % 25000 == 0 and index > 0:
+        if index * batch_size*n_clusters % 25000 == 0 and index > 0:
             with torch.no_grad():
                 model.eval()
                 targets = []
