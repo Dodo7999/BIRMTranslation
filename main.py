@@ -142,7 +142,7 @@ scheduler = torch.optim.lr_scheduler.CyclicLR(opt, step_size_up=20000, mode='tri
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count eval data = {len(val_inputs)}")
 
-batch_size = 20
+batch_size = 10
 cluster_loader = MyDataLoader(
     loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer_cluster),
     batch_size2=batch_size, shuffle=True)
