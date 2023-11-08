@@ -122,11 +122,6 @@ class Loader(Dataset):
 
 tokenizer_cluster = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
 model_cluster = BertModel.from_pretrained("bert-base-multilingual-cased")
-text = "Replace me by any text you'd like."
-encoded_input = tokenizer(text, return_tensors='pt')
-print(encoded_input)
-output = model_cluster(**encoded_input)
-print(output.shape)
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
