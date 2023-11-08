@@ -177,7 +177,7 @@ for i in range(n_epoch):
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
-        loss = loss_t.sum() + penalty
+        loss = loss_t.sum() + 0.1 * penalty
         loss.backward()
         torch.nn.utils.clip_grad_norm(model.parameters(), 0.1)
         opt.step()
