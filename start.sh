@@ -5,6 +5,7 @@
 #SBATCH --output=/userspace/bma/bsl_shift.log
 #SBATCH --partition=a100
 #SBATCH --nodes=1
+#SBATCH --nodelist=ngpu05
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-socket=1
