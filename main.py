@@ -120,8 +120,8 @@ class Loader(Dataset):
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
 
-tokenizer_cluster = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-model_cluster = BertModel.from_pretrained("bert-base-multilingual-cased")
+tokenizer_cluster = BertTokenizer.from_pretrained('bert-large-cased')
+model_cluster = BertModel.from_pretrained("bert-large-cased")
 
 # raw_datasets_val = load_dataset('json', data_files={'train': ['eval.txt']})['train'].select(range(100))
 raw_datasets_train = load_dataset("opus100", "en-ru", split='train[:1000000]')
