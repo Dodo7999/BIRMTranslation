@@ -33,11 +33,11 @@ def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
         np.random.shuffle(ids)
     print(data_env[0][0].shape)
     if data_env[0][0].shape[1] < 200:
-        batch_size = 10
-    elif data_env[0][0].shape[1] < 1000:
         batch_size = 5
-    else:
+    elif data_env[0][0].shape[1] < 1000:
         batch_size = 2
+    else:
+        batch_size = 1
     for i in range(batch_num):
         batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
         yield data_env[0][batch_ids], data_env[1][batch_ids]
