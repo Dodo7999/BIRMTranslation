@@ -28,9 +28,6 @@ def generator(data, batch_size, shuffle=False):
 
 
 def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
-    ids = np.arange(batch_size * batch_num)
-    if shuffle:
-        np.random.shuffle(ids)
     print(data_env[0][0].shape)
     if data_env[0][0].shape[1] < 200:
         batch_size = 5
@@ -38,6 +35,9 @@ def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
         batch_size = 2
     else:
         batch_size = 1
+    ids = np.arange(batch_size * batch_num)
+    if shuffle:
+        np.random.shuffle(ids)
     for i in range(batch_num):
         batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
         yield data_env[0][batch_ids], data_env[1][batch_ids]
@@ -219,7 +219,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 600_000 * (i + 1):
+        if record.text != '' and len(train_set) < 300_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
@@ -278,7 +278,7 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.99999)
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count trainer data = {len(val_inputs)}")
 
-batch_size = 5
+batch_size = 2
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
