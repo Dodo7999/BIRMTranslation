@@ -153,14 +153,14 @@ def preprocess_function(examples):
 
 paths = [
     ['/userspace/bma/BIRMTranslation/taiga/Arzamas.tar.gz', load_taiga_arzamas],
-    ['/userspace/bma/BIRMTranslation/taiga/Fontanka.tar.gz', load_taiga_fontanka],
     ['/userspace/bma/BIRMTranslation/taiga/Interfax.tar.gz', load_taiga_interfax],
     ['/userspace/bma/BIRMTranslation/taiga/KP.tar.gz', load_taiga_kp],
     ['/userspace/bma/BIRMTranslation/taiga/Lenta.tar.gz', load_taiga_lenta],
     ['/userspace/bma/BIRMTranslation/taiga/NPlus1.tar.gz', load_taiga_nplus1],
+    ['/userspace/bma/BIRMTranslation/taiga/proza_ru.zip', load_taiga_proza],
+    ['/userspace/bma/BIRMTranslation/taiga/Fontanka.tar.gz', load_taiga_fontanka],
     ['/userspace/bma/BIRMTranslation/taiga/social.tar.gz', load_taiga_social],
     ['/userspace/bma/BIRMTranslation/taiga/stihi_ru.zip', load_taiga_stihi],
-    ['/userspace/bma/BIRMTranslation/taiga/proza_ru.zip', load_taiga_proza],
 ]
 
 # Загрузка и кластеризацию по кластерам
@@ -212,7 +212,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 5_000_000:
+        if record.text != '' and len(train_set) < 750_000 * (i+1):
             text = record.text
 
             texts_p = text.split("\n")
@@ -253,9 +253,10 @@ inds = 2
 for i in range(3):
     if len_cls[i] != max(len_cls) and len_cls != min(len_cls):
         inds = i
-val_set = train_set[clusters == inds][:40]
-train_set = train_set[clusters != inds]
-clusters = clusters[clusters != inds]
+len_val = len(train_set[clusters == inds])
+val_set = train_set[clusters == inds][len_val // 2:len_val // 2 + 40]
+train_set = np.hstack((train_set[clusters != inds], train_set[clusters == inds][:len_val // 10]))
+clusters = np.hstack((clusters[clusters != inds], clusters[clusters == inds][:len_val // 10]))
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
 val_inputs = val_set[:, 0]
