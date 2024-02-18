@@ -261,7 +261,7 @@ for i in range(3):
     if len_cls[i] != max(len_cls) and len_cls != min(len_cls):
         inds = i
 len_val = len(train_set[clusters == inds])
-val_set = train_set[clusters == inds][len_val // 2:len_val // 2 + 40]
+val_set = train_set[clusters == inds][len_val // 2:len_val // 2 + 100]
 train_set = np.concatenate((train_set[clusters != inds], train_set[clusters == inds][:len_val // 10]), axis=0)
 clusters = np.concatenate((clusters[clusters != inds], clusters[clusters == inds][:len_val // 10]), axis=0)
 train_inputs = train_set[:, 0]
@@ -293,6 +293,8 @@ for i in range(n_epoch):
         model.train()
         loss_list = []
         for input_ids, attention_mask in envs:
+            print(attention_mask.shape)
+            print(input_ids.shape)
             loss_list.append(model(
                 attention_mask=attention_mask,
                 input_ids=input_ids,
