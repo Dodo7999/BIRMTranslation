@@ -154,13 +154,13 @@ def preprocess_function(examples):
 paths = [
     ['/userspace/bma/BIRMTranslation/taiga/Arzamas.tar.gz', load_taiga_arzamas],
     ['/userspace/bma/BIRMTranslation/taiga/Interfax.tar.gz', load_taiga_interfax],
-    ['/userspace/bma/BIRMTranslation/taiga/KP.tar.gz', load_taiga_kp],
-    ['/userspace/bma/BIRMTranslation/taiga/Lenta.tar.gz', load_taiga_lenta],
-    ['/userspace/bma/BIRMTranslation/taiga/NPlus1.tar.gz', load_taiga_nplus1],
-    ['/userspace/bma/BIRMTranslation/taiga/proza_ru.zip', load_taiga_proza],
-    ['/userspace/bma/BIRMTranslation/taiga/Fontanka.tar.gz', load_taiga_fontanka],
-    ['/userspace/bma/BIRMTranslation/taiga/social.tar.gz', load_taiga_social],
-    ['/userspace/bma/BIRMTranslation/taiga/stihi_ru.zip', load_taiga_stihi],
+    # ['/userspace/bma/BIRMTranslation/taiga/KP.tar.gz', load_taiga_kp],
+    # ['/userspace/bma/BIRMTranslation/taiga/Lenta.tar.gz', load_taiga_lenta],
+    # ['/userspace/bma/BIRMTranslation/taiga/NPlus1.tar.gz', load_taiga_nplus1],
+    # ['/userspace/bma/BIRMTranslation/taiga/proza_ru.zip', load_taiga_proza],
+    # ['/userspace/bma/BIRMTranslation/taiga/Fontanka.tar.gz', load_taiga_fontanka],
+    # ['/userspace/bma/BIRMTranslation/taiga/social.tar.gz', load_taiga_social],
+    # ['/userspace/bma/BIRMTranslation/taiga/stihi_ru.zip', load_taiga_stihi],
 ]
 
 # Загрузка и кластеризацию по кластерам
