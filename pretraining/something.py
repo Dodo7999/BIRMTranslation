@@ -255,8 +255,8 @@ for i in range(3):
         inds = i
 len_val = len(train_set[clusters == inds])
 val_set = train_set[clusters == inds][len_val // 2:len_val // 2 + 40]
-train_set = np.hstack((train_set[clusters != inds], train_set[clusters == inds][:len_val // 10]))
-clusters = np.hstack((clusters[clusters != inds], clusters[clusters == inds][:len_val // 10]))
+train_set = np.vstack((train_set[clusters != inds], train_set[clusters == inds][:len_val // 10]))
+clusters = np.vstack((clusters[clusters != inds], clusters[clusters == inds][:len_val // 10]))
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
 val_inputs = val_set[:, 0]
