@@ -31,6 +31,13 @@ def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
     ids = np.arange(batch_size * batch_num)
     if shuffle:
         np.random.shuffle(ids)
+    print(data_env[0][0].shape)
+    if data_env[0][0].shape[1] < 200:
+        batch_size = 10
+    elif data_env[0][0].shape[1] < 1000:
+        batch_size = 5
+    else:
+        batch_size = 2
     for i in range(batch_num):
         batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
         yield data_env[0][batch_ids], data_env[1][batch_ids]
@@ -212,7 +219,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 600_000 * (i+1):
+        if record.text != '' and len(train_set) < 600_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
