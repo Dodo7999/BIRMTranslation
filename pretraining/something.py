@@ -293,8 +293,6 @@ for i in range(n_epoch):
         model.train()
         loss_list = []
         for input_ids, attention_mask in envs:
-            print(attention_mask.shape)
-            print(input_ids.shape)
             loss_list.append(model(
                 attention_mask=attention_mask,
                 input_ids=input_ids,
