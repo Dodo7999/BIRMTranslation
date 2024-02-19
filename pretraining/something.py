@@ -363,7 +363,6 @@ for i in range(n_epoch):
                                 max_new_tokens=500
                             )
                         )
-                        print(pred_seq)
                         perplexity[j] += compute_perplexity(
                             predictions=pred_seq,
                             model=model,
@@ -393,7 +392,6 @@ for env in test_loader:
                 max_new_tokens=500,
             )
         )
-        print(pred_seq)
         perplexity[j] += compute_perplexity(
             predictions=pred_seq,
             model=model,
