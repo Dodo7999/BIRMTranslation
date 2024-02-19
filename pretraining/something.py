@@ -357,14 +357,13 @@ for i in range(n_epoch):
                     j = 0
                     for input_ids2, attention_mask2 in env:
                         count[j] += 1
-                        dec = input_ids2
-                        dec[dec == -100] = tokenizer.pad_token_id
                         pred_seq = tokenizer.batch_decode(
                             model.generate(
                                 input_ids=input_ids2[:, :2].to(device),
                                 max_new_tokens=500
                             )
                         )
+                        print(pred_seq)
                         perplexity[j] += compute_perplexity(
                             predictions=pred_seq,
                             model=model,
@@ -388,14 +387,13 @@ for env in test_loader:
     j = 0
     for input_ids2, attention_mask2 in env:
         count[j] += 1
-        dec = input_ids2
-        dec[dec == -100] = tokenizer.pad_token_id
         pred_seq = tokenizer.batch_decode(
             model.generate(
                 input_ids=input_ids2[:, :2].to(device),
                 max_new_tokens=500,
             )
         )
+        print(pred_seq)
         perplexity[j] += compute_perplexity(
             predictions=pred_seq,
             model=model,
