@@ -250,19 +250,19 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 600_000 * (i + 1):
+        if record.text != '' and len(train_set) < 300_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
             texts_s = re.split("\.|\n", text)
 
             for text_s in texts_s:
-                if text_s != "" and len(text_s) < 3000:
+                if text_s != "" and len(text_s) < 2000:
                     train_set.append(tokenizer.bos_token + text_s + tokenizer.eos_token)
                     clusters.append(len(text_s))
 
             for text_p in texts_p:
-                if text_p != "" and len(text_p) < 3000:
+                if text_p != "" and len(text_p) < 2000:
                     train_set.append(tokenizer.bos_token + text_p + tokenizer.eos_token)
                     clusters.append(len(text_p))
 
