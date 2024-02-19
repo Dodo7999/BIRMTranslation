@@ -2,6 +2,7 @@ import logging
 import re
 
 import torch
+from torch.nn import CrossEntropyLoss
 from transformers import MT5ForConditionalGeneration, GPT2Model, GPT2LMHeadModel
 from transformers import AutoTokenizer
 from torch.utils.data import Dataset
@@ -112,6 +113,79 @@ class Loader(Dataset):
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
 
+def compute_perplexity(
+        predictions, model, tokenizer, batch_size: int = 16, add_start_token: bool = True, device=None,
+        max_length=None
+):
+    if tokenizer.pad_token is None and batch_size > 1:
+        existing_special_tokens = list(tokenizer.special_tokens_map_extended.values())
+        assert (
+                len(existing_special_tokens) > 0
+        ), "If batch_size > 1, model must have at least one special token to use for padding. Please use a different model or set batch_size=1."
+        tokenizer.add_special_tokens({"pad_token": existing_special_tokens[0]})
+
+    if add_start_token and max_length:
+        assert (
+                tokenizer.bos_token is not None
+        ), "Input model must already have a BOS token if using add_start_token=True. Please use a different model, or set add_start_token=False"
+        max_tokenized_len = max_length - 1
+    else:
+        max_tokenized_len = max_length
+
+    encodings = tokenizer(
+        predictions,
+        add_special_tokens=False,
+        padding=True,
+        truncation=True if max_tokenized_len else False,
+        max_length=max_tokenized_len,
+        return_tensors="pt",
+        return_attention_mask=True,
+    ).to(device)
+
+    encoded_texts = encodings["input_ids"]
+    attn_masks = encodings["attention_mask"]
+
+    if add_start_token:
+        assert torch.all(torch.ge(attn_masks.sum(1), 1)), "Each input text must be at least one token long."
+    else:
+        assert torch.all(
+            torch.ge(attn_masks.sum(1), 2)
+        ), "When add_start_token=False, each input text must be at least two tokens long. Run with add_start_token=True if inputting strings of only one token, and remove all empty input strings."
+
+    ppls = []
+    loss_fct = CrossEntropyLoss(reduction="none")
+
+    for start_index in range(0, len(encoded_texts), batch_size):
+        end_index = min(start_index + batch_size, len(encoded_texts))
+        encoded_batch = encoded_texts[start_index:end_index]
+        attn_mask = attn_masks[start_index:end_index]
+
+        if add_start_token:
+            bos_tokens_tensor = torch.tensor([[tokenizer.bos_token_id]] * encoded_batch.size(dim=0)).to(device)
+            encoded_batch = torch.cat([bos_tokens_tensor, encoded_batch], dim=1)
+            attn_mask = torch.cat(
+                [torch.ones(bos_tokens_tensor.size(), dtype=torch.int64).to(device), attn_mask], dim=1
+            )
+
+        labels = encoded_batch
+
+        with torch.no_grad():
+            out_logits = model(encoded_batch, attention_mask=attn_mask).logits
+
+        shift_logits = out_logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        shift_attention_mask_batch = attn_mask[..., 1:].contiguous()
+
+        perplexity_batch = torch.exp(
+            (loss_fct(shift_logits.transpose(1, 2), shift_labels) * shift_attention_mask_batch).sum(1)
+            / shift_attention_mask_batch.sum(1)
+        )
+
+        ppls += perplexity_batch.tolist()
+
+    return {"perplexities": ppls, "mean_perplexity": np.mean(ppls)}
+
+
 bertscore = load("bertscore")
 perplexity = load("perplexity", module_type="metric")
 logging.basicConfig(level=logging.INFO)
@@ -121,7 +195,7 @@ max_target_length = 128
 chunk_size = 1000
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-torch.set_default_device(device)
+# torch.set_default_device(device)
 model_checkpoint = "ai-forever/rugpt3small_based_on_gpt2"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -131,7 +205,7 @@ print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
-model = GPT2LMHeadModel(config=model.config)
+model = GPT2LMHeadModel(config=model.config).to(device)
 
 
 def wer(hypothesis, reference):
@@ -170,49 +244,6 @@ paths = [
     ['/userspace/bma/BIRMTranslation/taiga/stihi_ru.zip', load_taiga_stihi],
 ]
 
-# Загрузка и кластеризацию по кластерам
-# train_set = []
-# val_set = []
-# clusters = []
-# clusters_val = []
-# for i, path in enumerate(paths):
-#     records = path[1](path[0])
-#     cluster = []
-#     cluster_val = []
-#     for record in records:
-#         if record.text != '' and len(cluster) < 200_000:
-#             text = record.text[:1000]
-#             if text != '' and len(val_set) > (i + 1) * 5:
-#                 cluster.append(i)
-#                 train_set.append([text, text])
-#             elif text != '':
-#                 cluster_val.append(i)
-#                 val_set.append([text[:50], text[:100]])
-#     clusters.append(cluster)
-#     clusters_val.append(cluster_val)
-# print(len(train_set))
-# clusts = []
-# train_set = train_set
-# for clust in clusters:
-#     clusts += clust
-# clusters = np.array(clusts)
-# print(clusters.shape)
-# train_set = list(map(preprocess_function, train_set))
-# train_inputs = np.array(train_set, dtype=object)[:, 0]
-# train_targets = np.array(train_set, dtype=object)[:, 1]
-#
-# print(len(val_set))
-# val_set = val_set
-# clusts_val = []
-# for clust in clusters_val:
-#     clusts_val += clust
-# clusters_val = np.array(clusts_val)
-# print(clusters_val.shape)
-# val_set = list(map(preprocess_function, val_set))
-# val_inputs = np.array(val_set, dtype=object)[:, 0]
-# val_targets = np.array(val_set, dtype=object)[:, 1]
-
-# Загрузка и кластеризацию по длинне
 train_set = []
 val_set = []
 clusters = []
@@ -229,23 +260,11 @@ for i, path in enumerate(paths):
                 if text_s != "" and len(text_s) < 3000:
                     train_set.append(tokenizer.bos_token + text_s + tokenizer.eos_token)
                     clusters.append(len(text_s))
-                    # if len(text_s) < 100:
-                    #     clusters.append(0)
-                    # elif len(text_s) < 500:
-                    #     clusters.append(1)
-                    # else:
-                    #     clusters.append(2)
 
             for text_p in texts_p:
                 if text_p != "" and len(text_p) < 3000:
                     train_set.append(tokenizer.bos_token + text_p + tokenizer.eos_token)
                     clusters.append(len(text_p))
-                    # if len(text_p) < 100:
-                    #     clusters.append(0)
-                    # elif len(text_p) < 500:
-                    #     clusters.append(1)
-                    # else:
-                    #     clusters.append(2)
 
 print(len(train_set))
 clusters = np.array(clusters)
@@ -253,23 +272,42 @@ print(clusters.shape)
 clusters = KMeans(n_clusters=3).fit(clusters.reshape(-1, 1)).labels_
 train_set = list(map(preprocess_function, train_set))
 train_set = np.array(train_set, dtype=object)
-len_cls = []
-for cls in np.unique(clusters):
-    len_cls.append(len(clusters[clusters == cls]))
-inds = 2
-for i in range(3):
-    if len_cls[i] != max(len_cls) and len_cls != min(len_cls):
-        inds = i
-len_val = len(train_set[clusters == inds])
-val_set = train_set[clusters == inds][len_val // 2:len_val // 2 + 100]
-train_set = np.concatenate((train_set[clusters != inds], train_set[clusters == inds][:len_val // 10]), axis=0)
-clusters = np.concatenate((clusters[clusters != inds], clusters[clusters == inds][:len_val // 10]), axis=0)
+
+current_cluster_test = 2
+envs_train = []
+envs_eval = []
+envs_test = []
+clusters_train = []
+clusters_eval = []
+clusters_test = []
+for cluster in clusters:
+    samples = train_set[clusters == cluster]
+    cluster_samples = clusters[clusters == cluster]
+    samples_len = len(samples)
+    if cluster == current_cluster_test:
+        envs_test.append(samples)
+        clusters_test.append(cluster_samples)
+    else:
+        envs_train.append(samples[:int(samples_len * 0.8)])
+        clusters_train.append(cluster_samples[:int(samples_len * 0.8)])
+        envs_eval.append(samples[int(samples_len * 0.8):int(samples_len * 0.9)])
+        clusters_eval.append(cluster_samples[int(samples_len * 0.8):int(samples_len * 0.9)])
+        envs_test.append(samples[int(samples_len * 0.9):])
+        clusters_test.append(cluster_samples[int(samples_len * 0.9):])
+train_set = np.concatenate(envs_train, axis=0)
+train_clusters = np.concatenate(clusters_train, axis=0)
+val_set = np.concatenate(envs_eval, axis=0)
+val_clusters = np.concatenate(clusters_eval, axis=0)
+test_set = np.concatenate(envs_test, axis=0)
+test_clusters = np.concatenate(clusters_test, axis=0)
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
 val_inputs = val_set[:, 0]
 val_targets = val_set[:, 1]
+test_inputs = test_set[:, 0]
+test_targets = test_set[:, 1]
 
-n_epoch = 60
+n_epoch = 1
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=2e-4)
 
@@ -285,18 +323,18 @@ for i in range(n_epoch):
     index = 0
     train_loader = MyDataLoader(
         loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size, clusters=clusters, shuffle=True)
+        batch_size2=batch_size, clusters=train_clusters, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
-        batch_size2=2, shuffle=False)
+        batch_size2=2, clusters=val_clusters, shuffle=False)
     for envs in train_loader:
         model.train()
         loss_list = []
         for input_ids, attention_mask in envs:
             loss_list.append(model(
-                attention_mask=attention_mask,
-                input_ids=input_ids,
-                labels=input_ids,
+                attention_mask=attention_mask.to(device),
+                input_ids=input_ids.to(device),
+                labels=input_ids.to(device),
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
@@ -307,25 +345,63 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 1000 == 0:
+        if index % 100 == 0:
             print(f"Count = {index}")
             print(
                 f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
-            if index % 10000 == 0:
+            if index % 1000 == 0:
                 model.eval()
-                for input_ids2, attention_mask2 in val_loader:
-                    dec = input_ids2
-                    dec[dec == -100] = tokenizer.pad_token_id
-                    targets = tokenizer.batch_decode(dec)
-                    pred_seq = tokenizer.batch_decode(
-                        model.generate(input_ids=input_ids2[:, :2]))
-                    print(targets)
-                    print(pred_seq)
-                    print(google_bleu.compute(predictions=pred_seq, references=targets))
-                    print(wer(pred_seq, targets))
-                    print(bertscore.compute(predictions=pred_seq, references=targets,
-                                            model_type="bert-base-multilingual-cased"))
-                    print(perplexity.compute(predictions=pred_seq, model_id='gpt2'))
+                perplexity = [0, 0]
+                count = [0, 0]
+                for env in val_loader:
+                    j = 0
+                    for input_ids2, attention_mask2 in env:
+                        count[j] += 1
+                        dec = input_ids2
+                        dec[dec == -100] = tokenizer.pad_token_id
+                        pred_seq = tokenizer.batch_decode(
+                            model.generate(
+                                input_ids=input_ids2[:, :2].to(device),
+                                max_new_tokens=500
+                            )
+                        )
+                        perplexity[j] += compute_perplexity(
+                            predictions=pred_seq,
+                            model=model,
+                            tokenizer=tokenizer,
+                            device=device
+                        )['mean_perplexity']
+                        j += 1
+                for j in range(2):
+                    print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}")
 
         index += 1
     print(f"Epoch = {i}")
+
+test_loader = MyDataLoader(
+    loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
+    batch_size2=batch_size, clusters=test_clusters, shuffle=True)
+model.eval()
+perplexity = [0, 0, 0]
+count = [0, 0, 0]
+for env in test_loader:
+    j = 0
+    for input_ids2, attention_mask2 in env:
+        count[j] += 1
+        dec = input_ids2
+        dec[dec == -100] = tokenizer.pad_token_id
+        pred_seq = tokenizer.batch_decode(
+            model.generate(
+                input_ids=input_ids2[:, :2].to(device),
+                max_new_tokens=500,
+            )
+        )
+        perplexity[j] += compute_perplexity(
+            predictions=pred_seq,
+            model=model,
+            tokenizer=tokenizer,
+            device=device
+        )['mean_perplexity']
+        j += 1
+for j in range(3):
+    print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}")
