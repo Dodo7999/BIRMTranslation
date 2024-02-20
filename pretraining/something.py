@@ -1,9 +1,8 @@
 import logging
 import re
 
-import torch
 from torch.nn import CrossEntropyLoss
-from transformers import MT5ForConditionalGeneration, GPT2Model, GPT2LMHeadModel
+from transformers import  GPT2LMHeadModel
 from transformers import AutoTokenizer
 from torch.utils.data import Dataset
 import numpy as np
@@ -12,7 +11,6 @@ from sklearn.cluster import KMeans
 from corus import load_taiga_arzamas, load_taiga_fontanka, load_taiga_interfax, load_taiga_kp, load_taiga_nplus1, \
     load_taiga_lenta, load_taiga_social, load_taiga_stihi, load_taiga_proza
 import torch
-from transformers import BertTokenizer, BertForMaskedLM
 from evaluate import load
 
 
@@ -195,7 +193,7 @@ max_target_length = 128
 chunk_size = 1000
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-# torch.set_default_device(device)
+torch.set_default_device(device)
 model_checkpoint = "ai-forever/rugpt3small_based_on_gpt2"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -205,7 +203,7 @@ print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
-model = GPT2LMHeadModel(config=model.config).to(device)
+model = GPT2LMHeadModel(config=model.config)
 
 
 def wer(hypothesis, reference):
@@ -332,9 +330,9 @@ for i in range(n_epoch):
         loss_list = []
         for input_ids, attention_mask in envs:
             loss_list.append(model(
-                attention_mask=attention_mask.to(device),
-                input_ids=input_ids.to(device),
-                labels=input_ids.to(device),
+                attention_mask=attention_mask,
+                input_ids=input_ids,
+                labels=input_ids,
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
@@ -359,7 +357,7 @@ for i in range(n_epoch):
                         count[j] += 1
                         pred_seq = tokenizer.batch_decode(
                             model.generate(
-                                input_ids=input_ids2[:, :2].to(device),
+                                input_ids=input_ids2[:, :2],
                                 max_new_tokens=500
                             )
                         )
@@ -388,7 +386,7 @@ for env in test_loader:
         count[j] += 1
         pred_seq = tokenizer.batch_decode(
             model.generate(
-                input_ids=input_ids2[:, :2].to(device),
+                input_ids=input_ids2[:, :2],
                 max_new_tokens=500,
             )
         )
