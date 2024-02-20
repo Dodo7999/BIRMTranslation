@@ -270,7 +270,7 @@ print(clusters.shape)
 clusters = KMeans(n_clusters=3).fit(clusters.reshape(-1, 1)).labels_
 train_set = list(map(preprocess_function, train_set))
 train_set = np.array(train_set, dtype=object)
-
+print(f"Clusters shape = {clusters.shape}")
 current_cluster_test = 2
 envs_train = []
 envs_eval = []
