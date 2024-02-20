@@ -278,7 +278,8 @@ envs_test = []
 clusters_train = []
 clusters_eval = []
 clusters_test = []
-for cluster in clusters:
+cl_unic = np.unique(clusters)
+for cluster in cl_unic:
     samples = train_set[clusters == cluster]
     cluster_samples = clusters[clusters == cluster]
     samples_len = len(samples)
