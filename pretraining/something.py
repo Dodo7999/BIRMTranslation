@@ -290,9 +290,9 @@ for cluster in cl_unic:
 train_set = np.concatenate(envs_train, axis=0)
 train_clusters = np.concatenate(clusters_train, axis=0)
 val_set = np.concatenate(envs_eval, axis=0)
-val_clusters = np.concatenate(clusters_eval, axis=0)
+val_clusters = np.concatenate(clusters_eval, axis=0)[:2000]
 test_set = np.concatenate(envs_test, axis=0)
-test_clusters = np.concatenate(clusters_test, axis=0)
+test_clusters = np.concatenate(clusters_test, axis=0)[:2000]
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
 val_inputs = val_set[:, 0][:2000]
