@@ -1,3 +1,4 @@
+import gc
 import logging
 import re
 
@@ -186,7 +187,7 @@ max_target_length = 128
 chunk_size = 1000
 
 device = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-torch.set_default_device(device)
+# torch.set_default_device(device)
 model_checkpoint = "ai-forever/rugpt3small_based_on_gpt2"
 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -196,7 +197,7 @@ print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
-model = GPT2LMHeadModel(config=model.config)
+model = GPT2LMHeadModel(config=model.config).to(device)
 
 
 def wer(hypothesis, reference):
@@ -298,8 +299,8 @@ val_inputs = val_set[:, 0][:2000]
 val_targets = val_set[:, 1][:2000]
 test_inputs = test_set[:, 0][:2000]
 test_targets = test_set[:, 1][:2000]
-
-n_epoch = 1
+gc.collect()
+n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=2e-4)
 
@@ -324,9 +325,9 @@ for i in range(n_epoch):
         loss_list = []
         for input_ids, attention_mask in envs:
             loss_list.append(model(
-                attention_mask=attention_mask,
-                input_ids=input_ids,
-                labels=input_ids,
+                attention_mask=attention_mask.to(device),
+                input_ids=input_ids.to(device),
+                labels=input_ids.to(device),
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
@@ -351,7 +352,7 @@ for i in range(n_epoch):
                         count[j] += 1
                         pred_seq = tokenizer.batch_decode(
                             model.generate(
-                                input_ids=input_ids2[:, :2],
+                                input_ids=input_ids2[:, :2].to(device),
                                 max_new_tokens=500
                             )
                         )
@@ -380,7 +381,7 @@ for env in test_loader:
         count[j] += 1
         pred_seq = tokenizer.batch_decode(
             model.generate(
-                input_ids=input_ids2[:, :2],
+                input_ids=input_ids2[:, :2].to(device),
                 max_new_tokens=500,
             )
         )
