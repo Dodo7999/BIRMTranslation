@@ -301,10 +301,10 @@ test_set = np.concatenate(envs_test, axis=0)
 test_clusters = np.concatenate(clusters_test, axis=0)
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
-val_inputs = val_set[:, 0]
-val_targets = val_set[:, 1]
-test_inputs = test_set[:, 0]
-test_targets = test_set[:, 1]
+val_inputs = val_set[:, 0][:2000]
+val_targets = val_set[:, 1][:2000]
+test_inputs = test_set[:, 0][:2000]
+test_targets = test_set[:, 1][:2000]
 
 n_epoch = 1
 cel = torch.nn.CrossEntropyLoss()
@@ -344,11 +344,11 @@ for i in range(n_epoch):
         opt.zero_grad()
         scheduler.step()
 
-        if index % 100 == 0:
+        if index % 1000 == 0:
             print(f"Count = {index}")
             print(
                 f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
-            if index % 1000 == 0:
+            if index % 10000 == 0:
                 model.eval()
                 perplexity = [0, 0]
                 count = [0, 0]
