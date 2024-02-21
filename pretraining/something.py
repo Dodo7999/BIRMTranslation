@@ -278,27 +278,27 @@ for cluster in cl_unic:
     cluster_samples = clusters[clusters == cluster]
     samples_len = len(samples)
     if cluster == current_cluster_test:
-        envs_test.append(samples)
-        clusters_test.append(cluster_samples)
+        envs_test.append(samples[:2000])
+        clusters_test.append(cluster_samples[:2000])
     else:
         envs_train.append(samples[:int(samples_len * 0.8)])
         clusters_train.append(cluster_samples[:int(samples_len * 0.8)])
-        envs_eval.append(samples[int(samples_len * 0.8):int(samples_len * 0.9)])
-        clusters_eval.append(cluster_samples[int(samples_len * 0.8):int(samples_len * 0.9)])
-        envs_test.append(samples[int(samples_len * 0.9):])
-        clusters_test.append(cluster_samples[int(samples_len * 0.9):])
+        envs_eval.append(samples[int(samples_len * 0.8):int(samples_len * 0.9)][:2000])
+        clusters_eval.append(cluster_samples[int(samples_len * 0.8):int(samples_len * 0.9)][:2000])
+        envs_test.append(samples[int(samples_len * 0.9):][:2000])
+        clusters_test.append(cluster_samples[int(samples_len * 0.9):][:2000])
 train_set = np.concatenate(envs_train, axis=0)
 train_clusters = np.concatenate(clusters_train, axis=0)
 val_set = np.concatenate(envs_eval, axis=0)
-val_clusters = np.concatenate(clusters_eval, axis=0)[:2000]
+val_clusters = np.concatenate(clusters_eval, axis=0)
 test_set = np.concatenate(envs_test, axis=0)
-test_clusters = np.concatenate(clusters_test, axis=0)[:2000]
+test_clusters = np.concatenate(clusters_test, axis=0)
 train_inputs = train_set[:, 0]
 train_targets = train_set[:, 1]
-val_inputs = val_set[:, 0][:2000]
-val_targets = val_set[:, 1][:2000]
-test_inputs = test_set[:, 0][:2000]
-test_targets = test_set[:, 1][:2000]
+val_inputs = val_set[:, 0]
+val_targets = val_set[:, 1]
+test_inputs = test_set[:, 0]
+test_targets = test_set[:, 1]
 gc.collect()
 n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
