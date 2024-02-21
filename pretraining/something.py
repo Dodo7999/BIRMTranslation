@@ -27,13 +27,6 @@ def generator(data, batch_size, shuffle=False):
 
 
 def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
-    print(data_env[0][0].shape)
-    if data_env[0][0].shape[0] < 200:
-        batch_size = 5
-    elif data_env[0][0].shape[0] < 1000:
-        batch_size = 2
-    else:
-        batch_size = 1
     ids = np.arange(batch_size * batch_num)
     if shuffle:
         np.random.shuffle(ids)
