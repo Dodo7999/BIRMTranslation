@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --job-name=birm_shift
+#SBATCH --job-name=gpt2_pretr
 #SBATCH --error=/userspace/bma/bsl_shift_err.log
 #SBATCH --output=/userspace/bma/bsl_shift.log
 #SBATCH --partition=a100
