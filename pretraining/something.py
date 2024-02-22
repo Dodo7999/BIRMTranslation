@@ -354,8 +354,8 @@ for i in range(n_epoch):
                         pred_seq = tokenizer.batch_decode(
                             model.generate(
                                 input_ids=input_ids2[:, :2].to(device),
-                                max_new_tokens=input_ids2.shape[1] + 10,
-                                min_new_tokens=abs(input_ids2.shape[1] - 10)
+                                max_new_tokens=input_ids2.shape[1] + 100,
+                                min_new_tokens=abs(input_ids2.shape[1] - 100)
                             )
                         )
                         perplexity[j] += compute_perplexity(
@@ -387,8 +387,8 @@ for env in test_loader:
         pred_seq = tokenizer.batch_decode(
             model.generate(
                 input_ids=input_ids2[:, :2].to(device),
-                max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
-                min_new_tokens=abs(input_ids2.shape[1] - 10)
+                max_new_tokens=min(input_ids2.shape[1] + 100, 2048),
+                min_new_tokens=abs(input_ids2.shape[1] - 100)
             )
         )
         perplexity[j] += compute_perplexity(
