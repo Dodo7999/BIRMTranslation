@@ -1,15 +1,15 @@
 #!/bin/sh
 
-#SBATCH --job-name=gpt2_pretr
-#SBATCH --error=/userspace/bma/bsl_shift_err.log
-#SBATCH --output=/userspace/bma/bsl_shift.log
+#SBATCH --job-name=gpt2_base
+#SBATCH --error=/userspace/bma/gpt2_base_err.log
+#SBATCH --output=/userspace/bma/gpt2_base.log
 #SBATCH --partition=a100
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-socket=1
 #SBATCH --no-requeue
-#SBATCH -o bsl_shift.log
+#SBATCH -o gpt2_base.log
 
 # General SLURM Parameters
 echo "# SLURM_JOBID  = ${SLURM_JOBID}"
@@ -33,5 +33,5 @@ nvcc -V
 python -V
 python -c "import torch, transformers, datasets, tokenizers; print(f'torch.version = {torch.__version__}, CUDA = {torch.cuda.is_available()}, transformers.version = {transformers.__version__}, datasets.version = {datasets.__version__}, tokenizers.version = {tokenizers.__version__}')"
 
-python -u pretraining/something.py
+python -u pretraining/something_base.py
 
