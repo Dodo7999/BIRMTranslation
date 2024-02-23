@@ -309,7 +309,7 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.999996
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count trainer data = {len(val_inputs)}")
 
-batch_size = 3
+batch_size = 2
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
