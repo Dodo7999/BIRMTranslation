@@ -304,12 +304,12 @@ n_epoch = 3
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=2e-4)
 
-scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.99999)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.999996)
 
 print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count trainer data = {len(val_inputs)}")
 
-batch_size = 2
+batch_size = 3
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
@@ -319,7 +319,7 @@ for i in range(n_epoch):
         batch_size2=batch_size, clusters=train_clusters, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
-        batch_size2=2, clusters=val_clusters, shuffle=False)
+        batch_size2=batch_size, clusters=val_clusters, shuffle=False)
     for envs in train_loader:
         model.train()
         loss_list = []
