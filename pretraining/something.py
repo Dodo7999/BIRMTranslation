@@ -225,15 +225,15 @@ def preprocess_function(examples):
 
 
 paths = [
-    ['../taiga/Arzamas.tar.gz', load_taiga_arzamas],
-    ['../taiga/Fontanka.tar.gz', load_taiga_fontanka],
-    # ['../taiga/Interfax.tar.gz', load_taiga_interfax],
-    # ['../taiga/KP.tar.gz', load_taiga_kp],
-    # ['../taiga/Lenta.tar.gz', load_taiga_lenta],
-    # ['../taiga/NPlus1.tar.gz', load_taiga_nplus1],
-    # ['../taiga/social.tar.gz', load_taiga_social],
-    # ['../taiga/stihi_ru.zip', load_taiga_stihi],
-    # ['../taiga/proza_ru.zip', load_taiga_proza],
+    ['/userspace/bma/BIRMTranslation/taiga/Arzamas.tar.gz', load_taiga_arzamas],
+    ['/userspace/bma/BIRMTranslation/taiga/Interfax.tar.gz', load_taiga_interfax],
+    ['/userspace/bma/BIRMTranslation/taiga/KP.tar.gz', load_taiga_kp],
+    ['/userspace/bma/BIRMTranslation/taiga/Lenta.tar.gz', load_taiga_lenta],
+    ['/userspace/bma/BIRMTranslation/taiga/NPlus1.tar.gz', load_taiga_nplus1],
+    ['/userspace/bma/BIRMTranslation/taiga/proza_ru.zip', load_taiga_proza],
+    ['/userspace/bma/BIRMTranslation/taiga/Fontanka.tar.gz', load_taiga_fontanka],
+    ['/userspace/bma/BIRMTranslation/taiga/social.tar.gz', load_taiga_social],
+    ['/userspace/bma/BIRMTranslation/taiga/stihi_ru.zip', load_taiga_stihi],
 ]
 
 train_set = []
@@ -242,7 +242,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 1000 * (i + 1):
+        if record.text != '' and len(train_set) < 300_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
