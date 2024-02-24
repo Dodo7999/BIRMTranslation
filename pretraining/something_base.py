@@ -347,7 +347,7 @@ for i in range(n_epoch):
                             model.generate(
                                 input_ids=input_ids2[:, :2].to(device),
                                 max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
-                                min_new_tokens=abs(input_ids2.shape[1] - 10)
+                                min_new_tokens=input_ids2.shape[1]
                             )
                         )
                         perplexity[j] += compute_perplexity(
@@ -365,32 +365,32 @@ for i in range(n_epoch):
         index += 1
     print(f"Epoch = {i}")
 
-test_loader = MyDataLoader(
-    loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
-    batch_size2=batch_size, clusters=test_clusters, shuffle=True)
-model.eval()
-perplexity = [0, 0, 0]
-count = [0, 0, 0]
-length = [0, 0, 0]
-for env in test_loader:
-    j = 0
-    for input_ids2, attention_mask2 in env:
-        count[j] += 1
-        pred_seq = tokenizer.batch_decode(
-            model.generate(
-                input_ids=input_ids2[:, :2].to(device),
-                max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
-                min_new_tokens=abs(input_ids2.shape[1] - 10)
+    test_loader = MyDataLoader(
+        loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
+        batch_size2=batch_size, clusters=test_clusters, shuffle=True)
+    model.eval()
+    perplexity = [0, 0, 0]
+    count = [0, 0, 0]
+    length = [0, 0, 0]
+    for env in test_loader:
+        j = 0
+        for input_ids2, attention_mask2 in env:
+            count[j] += 1
+            pred_seq = tokenizer.batch_decode(
+                model.generate(
+                    input_ids=input_ids2[:, :2].to(device),
+                    max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
+                    min_new_tokens=input_ids2.shape[1]
+                )
             )
-        )
-        perplexity[j] += compute_perplexity(
-            predictions=pred_seq,
-            model=model,
-            tokenizer=tokenizer,
-            device=device
-        )['mean_perplexity']
-        if j == 0 or j == 1 or j == 2:
-            length[j] = input_ids2.shape[1]
-        j += 1
-for j in range(3):
-    print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
+            perplexity[j] += compute_perplexity(
+                predictions=pred_seq,
+                model=model,
+                tokenizer=tokenizer,
+                device=device
+            )['mean_perplexity']
+            if j == 0 or j == 1 or j == 2:
+                length[j] = input_ids2.shape[1]
+            j += 1
+    for j in range(3):
+        print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
