@@ -3,7 +3,7 @@ import logging
 import re
 
 from torch.nn import CrossEntropyLoss
-from transformers import  GPT2LMHeadModel
+from transformers import GPT2LMHeadModel
 from transformers import AutoTokenizer
 from torch.utils.data import Dataset
 import numpy as np
@@ -198,24 +198,7 @@ tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
 model = GPT2LMHeadModel(config=model.config).to(device)
-
-
-def wer(hypothesis, reference):
-    hypothesis = "".join(hypothesis)
-    reference = "".join(reference)
-
-    hypothesis = hypothesis.lower()
-    reference = reference.lower()
-
-    errors = 0
-    for h, r in zip(hypothesis, reference):
-        if h != r:
-            errors += 1
-
-    # Вычисление WER
-    wer = errors / len(reference)
-
-    return wer
+torch.save(model, "/userspace/bma/BIRMTranslation/model_birm.pth")
 
 
 def preprocess_function(examples):
@@ -249,21 +232,26 @@ for i, path in enumerate(paths):
             texts_s = re.split("\.|\n", text)
 
             for text_s in texts_s:
-                if text_s != "" and len(text_s) < 2000:
+                if text_s != "" and len(text_s):
                     train_set.append(tokenizer.bos_token + text_s + tokenizer.eos_token)
                     clusters.append(len(text_s))
 
             for text_p in texts_p:
-                if text_p != "" and len(text_p) < 2000:
+                if text_p != "" and len(text_p):
                     train_set.append(tokenizer.bos_token + text_p + tokenizer.eos_token)
                     clusters.append(len(text_p))
-
-print(len(train_set))
 clusters = np.array(clusters)
-print(clusters.shape)
 clusters = KMeans(n_clusters=3).fit(clusters.reshape(-1, 1)).labels_
 train_set = list(map(preprocess_function, train_set))
 train_set = np.array(train_set, dtype=object)
+some_set = []
+some_clusters = []
+for i, text_tokens in enumerate(train_set):
+    if len(text_tokens[0]) <= 2000:
+        some_set.append(text_tokens)
+        some_clusters.append(clusters[i])
+train_set = np.array(some_set, dtype=object)
+clusters = np.array(some_clusters)
 print(f"Clusters shape = {clusters.shape}")
 current_cluster_test = 2
 envs_train = []
@@ -300,14 +288,15 @@ val_targets = val_set[:, 1]
 test_inputs = test_set[:, 0]
 test_targets = test_set[:, 1]
 gc.collect()
-n_epoch = 3
+n_epoch = 1
 cel = torch.nn.CrossEntropyLoss()
-opt = torch.optim.AdamW(model.parameters(), lr=2e-4)
+opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.999996)
 
 print(f"Count trainer data = {len(train_inputs)}")
-print(f"Count trainer data = {len(val_inputs)}")
+print(f"Count val data = {len(val_inputs)}")
+print(f"Count test data = {len(test_inputs)}")
 
 batch_size = 2
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
@@ -344,6 +333,7 @@ for i in range(n_epoch):
                 f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
             if index % 100_000 == 0:
                 model.eval()
+                torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_{index}.pth")
                 perplexity = [0, 0]
                 count = [0, 0]
                 length = [0, 0]
@@ -402,3 +392,5 @@ for env in test_loader:
         j += 1
 for j in range(3):
     print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
+
+torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_final.pth")
