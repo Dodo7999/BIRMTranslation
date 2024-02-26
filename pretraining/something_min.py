@@ -3,7 +3,7 @@ import logging
 import re
 
 from torch.nn import CrossEntropyLoss
-from transformers import  GPT2LMHeadModel
+from transformers import GPT2LMHeadModel
 from transformers import AutoTokenizer
 from torch.utils.data import Dataset
 import numpy as np
@@ -198,24 +198,7 @@ tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
 model = GPT2LMHeadModel(config=model.config).to(device)
-torch.save(model, "/userspace/bma/BIRMTranslation/model_base.pth")
-
-def wer(hypothesis, reference):
-    hypothesis = "".join(hypothesis)
-    reference = "".join(reference)
-
-    hypothesis = hypothesis.lower()
-    reference = reference.lower()
-
-    errors = 0
-    for h, r in zip(hypothesis, reference):
-        if h != r:
-            errors += 1
-
-    # Вычисление WER
-    wer = errors / len(reference)
-
-    return wer
+torch.save(model, "/userspace/bma/BIRMTranslation/model_birm_min.pth")
 
 
 def preprocess_function(examples):
@@ -242,7 +225,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 300_000 * (i + 1):
+        if record.text != '' and len(train_set) < 400_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
@@ -278,7 +261,7 @@ min_cls = cls_size.argmin()
 max_cls = cls_size.argmax()
 mid_cls = np.argsort(cls_size)[len(cls_size) // 2]
 print(f"Clusters shape = {clusters.shape}")
-current_cluster_test = max_cls
+current_cluster_test = min_cls
 envs_train = []
 envs_eval = []
 envs_test = []
@@ -295,11 +278,13 @@ for cluster in cl_unic:
         clusters_test.append(cluster_samples[:2000])
     else:
         envs_train.append(samples[:int(samples_len * 0.8)])
+        clusters_train.append(cluster_samples[:int(samples_len * 0.8)])
         envs_eval.append(samples[int(samples_len * 0.8):int(samples_len * 0.9)][:2000])
         clusters_eval.append(cluster_samples[int(samples_len * 0.8):int(samples_len * 0.9)][:2000])
         envs_test.append(samples[int(samples_len * 0.9):][:2000])
         clusters_test.append(cluster_samples[int(samples_len * 0.9):][:2000])
 train_set = np.concatenate(envs_train, axis=0)
+train_clusters = np.concatenate(clusters_train, axis=0)
 val_set = np.concatenate(envs_eval, axis=0)
 val_clusters = np.concatenate(clusters_eval, axis=0)
 test_set = np.concatenate(envs_test, axis=0)
@@ -318,7 +303,7 @@ opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=0.999996)
 
 print(f"Count trainer data = {len(train_inputs)}")
-print(f"Count trainer data = {len(val_inputs)}")
+print(f"Count val data = {len(val_inputs)}")
 print(f"Count test data = {len(test_inputs)}")
 
 batch_size = 2
@@ -328,17 +313,22 @@ for i in range(n_epoch):
     index = 0
     train_loader = MyDataLoader(
         loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size*2, shuffle=True)
+        batch_size2=batch_size, clusters=train_clusters, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
         batch_size2=batch_size, clusters=val_clusters, shuffle=False)
-    for input_ids, attention_mask in train_loader:
+    for envs in train_loader:
         model.train()
-        loss = model(
-            attention_mask=attention_mask.to(device),
-            input_ids=input_ids.to(device),
-            labels=input_ids.to(device),
-        ).loss
+        loss_list = []
+        for input_ids, attention_mask in envs:
+            loss_list.append(model(
+                attention_mask=attention_mask.to(device),
+                input_ids=input_ids.to(device),
+                labels=input_ids.to(device),
+            ).loss)
+        loss_t = torch.stack(loss_list)
+        penalty = ((loss_t - loss_t.mean()) ** 2).sum()
+        loss = loss_t.sum() + penalty
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
         opt.step()
@@ -347,10 +337,11 @@ for i in range(n_epoch):
 
         if index % 1000 == 0:
             print(f"Count = {index}")
-            print(f"Epoch = {i}, loss = {loss}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
+            print(
+                f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
             if index % 100_000 == 0:
                 model.eval()
-                torch.save(model, f"/userspace/bma/BIRMTranslation/model_base_{index}.pth")
+                torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_min_{index}.pth")
                 perplexity = [0, 0]
                 count = [0, 0]
                 length = [0, 0]
@@ -380,34 +371,34 @@ for i in range(n_epoch):
         index += 1
     print(f"Epoch = {i}")
 
-    test_loader = MyDataLoader(
-        loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size, clusters=test_clusters, shuffle=True)
-    model.eval()
-    perplexity = [0, 0, 0]
-    count = [0, 0, 0]
-    length = [0, 0, 0]
-    for env in test_loader:
-        j = 0
-        for input_ids2, attention_mask2 in env:
-            count[j] += 1
-            pred_seq = tokenizer.batch_decode(
-                model.generate(
-                    input_ids=input_ids2[:, :2].to(device),
-                    max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
-                    min_new_tokens=input_ids2.shape[1]
-                )
+test_loader = MyDataLoader(
+    loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
+    batch_size2=batch_size, clusters=test_clusters, shuffle=True)
+model.eval()
+perplexity = [0, 0, 0]
+count = [0, 0, 0]
+length = [0, 0, 0]
+for env in test_loader:
+    j = 0
+    for input_ids2, attention_mask2 in env:
+        count[j] += 1
+        pred_seq = tokenizer.batch_decode(
+            model.generate(
+                input_ids=input_ids2[:, :2].to(device),
+                max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
+                min_new_tokens=input_ids2.shape[1]
             )
-            perplexity[j] += compute_perplexity(
-                predictions=pred_seq,
-                model=model,
-                tokenizer=tokenizer,
-                device=device
-            )['mean_perplexity']
-            if j == 0 or j == 1 or j == 2:
-                length[j] = input_ids2.shape[1]
-            j += 1
-    for j in range(3):
-        print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
+        )
+        perplexity[j] += compute_perplexity(
+            predictions=pred_seq,
+            model=model,
+            tokenizer=tokenizer,
+            device=device
+        )['mean_perplexity']
+        if j == 0 or j == 1 or j == 2:
+            length[j] = input_ids2.shape[1]
+        j += 1
+for j in range(3):
+    print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
 
-torch.save(model, f"/userspace/bma/BIRMTranslation/model_base_final.pth")
+torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_min_final.pth")

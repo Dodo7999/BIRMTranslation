@@ -198,7 +198,7 @@ tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
 model = GPT2LMHeadModel(config=model.config).to(device)
-torch.save(model, "/userspace/bma/BIRMTranslation/model_birm.pth")
+torch.save(model, "/userspace/bma/BIRMTranslation/model_birm_mid.pth")
 
 
 def preprocess_function(examples):
@@ -225,7 +225,7 @@ clusters = []
 for i, path in enumerate(paths):
     records = path[1](path[0])
     for record in records:
-        if record.text != '' and len(train_set) < 300_000 * (i + 1):
+        if record.text != '' and len(train_set) < 400_000 * (i + 1):
             text = record.text
 
             texts_p = text.split("\n")
@@ -247,13 +247,21 @@ train_set = np.array(train_set, dtype=object)
 some_set = []
 some_clusters = []
 for i, text_tokens in enumerate(train_set):
-    if len(text_tokens[0]) <= 2000:
+    if len(text_tokens[0]) <= 1000:
         some_set.append(text_tokens)
         some_clusters.append(clusters[i])
 train_set = np.array(some_set, dtype=object)
 clusters = np.array(some_clusters)
+cls_size = []
+for i in range(3):
+    cls_size.append(len(train_set[clusters == i][0][0]))
+cls_size = np.array(cls_size)
+print(cls_size)
+min_cls = cls_size.argmin()
+max_cls = cls_size.argmax()
+mid_cls = np.argsort(cls_size)[len(cls_size) // 2]
 print(f"Clusters shape = {clusters.shape}")
-current_cluster_test = 2
+current_cluster_test = mid_cls
 envs_train = []
 envs_eval = []
 envs_test = []
@@ -333,7 +341,7 @@ for i in range(n_epoch):
                 f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
             if index % 100_000 == 0:
                 model.eval()
-                torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_{index}.pth")
+                torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_mid_{index}.pth")
                 perplexity = [0, 0]
                 count = [0, 0]
                 length = [0, 0]
@@ -393,4 +401,4 @@ for env in test_loader:
 for j in range(3):
     print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
 
-torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_final.pth")
+torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_mid_final.pth")
