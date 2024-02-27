@@ -311,7 +311,7 @@ val_targets = val_set[:, 1]
 test_inputs = test_set[:, 0]
 test_targets = test_set[:, 1]
 gc.collect()
-n_epoch = 1
+n_epoch = 5
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 
@@ -373,6 +373,7 @@ for i in range(n_epoch):
                         )['mean_perplexity']
                         if j == 0 or j == 1:
                             length[j] = input_ids2.shape[1]
+                            print(pred_seq)
                         j += 1
                 for j in range(2):
                     print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
@@ -406,6 +407,7 @@ for i in range(n_epoch):
             )['mean_perplexity']
             if j == 0 or j == 1 or j == 2:
                 length[j] = input_ids2.shape[1]
+                print(pred_seq)
             j += 1
     for j in range(3):
         print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
