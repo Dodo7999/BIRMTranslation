@@ -373,7 +373,8 @@ for i in range(n_epoch):
                         )['mean_perplexity']
                         if j == 0 or j == 1:
                             length[j] = input_ids2.shape[1]
-                            print(pred_seq)
+                            if count[j] == 1:
+                                print(pred_seq)
                         j += 1
                 for j in range(2):
                     print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
@@ -407,7 +408,8 @@ for i in range(n_epoch):
             )['mean_perplexity']
             if j == 0 or j == 1 or j == 2:
                 length[j] = input_ids2.shape[1]
-                print(pred_seq)
+                if count[j] == 1:
+                    print(pred_seq)
             j += 1
     for j in range(3):
         print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
