@@ -197,7 +197,8 @@ print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
 print(model.config)
-model = GPT2LMHeadModel(config=model.config).to(device)
+# model = GPT2LMHeadModel(config=model.config).to(device)
+model = torch.load("/userspace/bma/BIRMTranslation/model_birm_max_1200000.pth")
 torch.save(model, "/userspace/bma/BIRMTranslation/model_birm_max.pth")
 
 
@@ -296,7 +297,7 @@ val_targets = val_set[:, 1]
 test_inputs = test_set[:, 0]
 test_targets = test_set[:, 1]
 gc.collect()
-n_epoch = 5
+n_epoch = 0
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 
