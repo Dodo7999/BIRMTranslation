@@ -323,7 +323,7 @@ print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count trainer data = {len(val_inputs)}")
 print(f"Count test data = {len(test_inputs)}")
 
-batch_size = 8
+batch_size = 4
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
@@ -334,6 +334,7 @@ for i in range(n_epoch):
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
         batch_size2=batch_size*2, clusters=val_clusters, shuffle=False)
+    jk = 0
     for input_ids, attention_mask in train_loader:
         model.train()
         loss = model(
@@ -342,10 +343,13 @@ for i in range(n_epoch):
             labels=input_ids.to(device),
         ).loss
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-        opt.step()
-        opt.zero_grad()
-        scheduler.step()
+        if jk == 1:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+            opt.step()
+            opt.zero_grad()
+            scheduler.step()
+            jk = 0
+        jk += 1
 
         if index % 1000 == 0:
             print(f"Count = {index}")
