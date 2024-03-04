@@ -196,9 +196,10 @@ print(tokenizer.eos_token)
 print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
+model.config["n_embd"] = 512
 print(model.config)
-# model = GPT2LMHeadModel(config=model.config).to(device)
-model = torch.load("/userspace/bma/BIRMTranslation/model_birm_max_1200000.pth")
+model = GPT2LMHeadModel(config=model.config).to(device)
+# model = torch.load("/userspace/bma/BIRMTranslation/model_birm_max_1200000.pth")
 torch.save(model, "/userspace/bma/BIRMTranslation/model_birm_max.pth")
 
 
@@ -297,7 +298,7 @@ val_targets = val_set[:, 1]
 test_inputs = test_set[:, 0]
 test_targets = test_set[:, 1]
 gc.collect()
-n_epoch = 0
+n_epoch = 1
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 
@@ -317,7 +318,7 @@ for i in range(n_epoch):
         batch_size2=batch_size, clusters=train_clusters, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size, clusters=val_clusters, shuffle=False)
+        batch_size2=batch_size*2, clusters=val_clusters, shuffle=False)
     for envs in train_loader:
         model.train()
         loss_list = []
@@ -374,36 +375,36 @@ for i in range(n_epoch):
         index += 1
     print(f"Epoch = {i}")
 
-test_loader = MyDataLoader(
-    loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
-    batch_size2=batch_size, clusters=test_clusters, shuffle=True)
-model.eval()
-perplexity = [0, 0, 0]
-count = [0, 0, 0]
-length = [0, 0, 0]
-for env in test_loader:
-    j = 0
-    for input_ids2, attention_mask2 in env:
-        count[j] += 1
-        pred_seq = tokenizer.batch_decode(
-            model.generate(
-                input_ids=input_ids2[:, :2].to(device),
-                max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
-                min_new_tokens=input_ids2.shape[1]
+    test_loader = MyDataLoader(
+        loader=Loader(inputs=test_inputs, labels=test_targets, tokenizer2=tokenizer),
+        batch_size2=batch_size, clusters=test_clusters, shuffle=True)
+    model.eval()
+    perplexity = [0, 0, 0]
+    count = [0, 0, 0]
+    length = [0, 0, 0]
+    for env in test_loader:
+        j = 0
+        for input_ids2, attention_mask2 in env:
+            count[j] += 1
+            pred_seq = tokenizer.batch_decode(
+                model.generate(
+                    input_ids=input_ids2[:, :2].to(device),
+                    max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
+                    min_new_tokens=input_ids2.shape[1]
+                )
             )
-        )
-        perplexity[j] += compute_perplexity(
-            predictions=pred_seq,
-            model=model,
-            tokenizer=tokenizer,
-            device=device
-        )['mean_perplexity']
-        if j == 0 or j == 1 or j == 2:
-            length[j] = input_ids2.shape[1]
-            if count[j] == 1:
-                print(pred_seq)
-        j += 1
-for j in range(3):
-    print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
+            perplexity[j] += compute_perplexity(
+                predictions=pred_seq,
+                model=model,
+                tokenizer=tokenizer,
+                device=device
+            )['mean_perplexity']
+            if j == 0 or j == 1 or j == 2:
+                length[j] = input_ids2.shape[1]
+                if count[j] == 1:
+                    print(pred_seq)
+            j += 1
+    for j in range(3):
+        print(f"Perplexity env {j} = {perplexity[j] / max(count[j], 1)}, length = {length[j]}")
 
 torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_max_final.pth")

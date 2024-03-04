@@ -196,6 +196,7 @@ print(tokenizer.eos_token)
 print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
+model.config["n_embd"] = 512
 print(model.config)
 model = GPT2LMHeadModel(config=model.config).to(device)
 torch.save(model, "/userspace/bma/BIRMTranslation/model_base.pth")
@@ -311,7 +312,7 @@ val_targets = val_set[:, 1]
 test_inputs = test_set[:, 0]
 test_targets = test_set[:, 1]
 gc.collect()
-n_epoch = 5
+n_epoch = 1
 cel = torch.nn.CrossEntropyLoss()
 opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 
@@ -331,7 +332,7 @@ for i in range(n_epoch):
         batch_size2=batch_size*2, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size, clusters=val_clusters, shuffle=False)
+        batch_size2=batch_size*2, clusters=val_clusters, shuffle=False)
     for input_ids, attention_mask in train_loader:
         model.train()
         loss = model(
