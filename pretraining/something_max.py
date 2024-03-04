@@ -196,9 +196,10 @@ print(tokenizer.eos_token)
 print(tokenizer.bos_token)
 tokenizer.padding_side = "right"
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
-model.config["n_embd"] = 512
-print(model.config)
-model = GPT2LMHeadModel(config=model.config).to(device)
+config = model.config
+config.n_embd = 504
+print(config)
+model = GPT2LMHeadModel(config=config).to(device)
 # model = torch.load("/userspace/bma/BIRMTranslation/model_birm_max_1200000.pth")
 torch.save(model, "/userspace/bma/BIRMTranslation/model_birm_max.pth")
 
@@ -308,7 +309,7 @@ print(f"Count trainer data = {len(train_inputs)}")
 print(f"Count val data = {len(val_inputs)}")
 print(f"Count test data = {len(test_inputs)}")
 
-batch_size = 2
+batch_size = 8
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
