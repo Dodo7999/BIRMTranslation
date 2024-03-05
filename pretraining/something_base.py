@@ -351,7 +351,7 @@ for i in range(n_epoch):
             jk = 0
         jk += 1
 
-        if index % 1000 == 0:
+        if index % 1000 == 0 and index > 0:
             print(f"Count = {index}")
             print(f"Epoch = {i}, loss = {loss}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
             if index % 100_000 == 0:

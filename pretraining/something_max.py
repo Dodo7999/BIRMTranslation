@@ -310,6 +310,7 @@ print(f"Count val data = {len(val_inputs)}")
 print(f"Count test data = {len(test_inputs)}")
 
 batch_size = 4
+lambda_regularization = torch.tensor(1.0)
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
 for i in range(n_epoch):
     model.train()
@@ -332,7 +333,26 @@ for i in range(n_epoch):
             ).loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
-        loss = loss_t.sum() + penalty
+
+        los = loss_t.sum()
+        los.backward(retain_graph=True)
+        grad_of_params = []
+        for parameter in model.parameters():
+            if parameter.grad is not None:
+                grad_of_params.append(torch.max(torch.abs(parameter.grad)))
+        max_f = max(grad_of_params)
+        opt.zero_grad()
+        penalty.backward(retain_graph=True)
+        grad_of_params = []
+        for parameter in model.parameters():
+            if parameter.grad is not None:
+                grad_of_params.append(torch.abs(parameter.grad).mean())
+        regularization = max_f / torch.tensor(grad_of_params).mean()
+        opt.zero_grad()
+        regularization = 0.1 * lambda_regularization + 0.9 * regularization
+        lambda_regularization = regularization
+
+        loss = loss_t.sum() + lambda_regularization * penalty
         loss.backward()
         if jk == 1:
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
@@ -342,10 +362,10 @@ for i in range(n_epoch):
             jk = 0
         jk += 1
 
-        if index % 1000 == 0:
+        if index % 1000 == 0 and index > 0:
             print(f"Count = {index}")
             print(
-                f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}")
+                f"Epoch = {i}, loss = {loss}, losses = {loss_t.detach().tolist()}, penalty = {penalty}, batch_index = {index}, lr = {opt.param_groups[0]['lr']}, reg = {lambda_regularization}")
             if index % 100_000 == 0:
                 model.eval()
                 torch.save(model, f"/userspace/bma/BIRMTranslation/model_birm_max_{index}.pth")
