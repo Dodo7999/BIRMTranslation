@@ -349,7 +349,7 @@ for i in range(n_epoch):
                 grad_of_params.append(torch.abs(parameter.grad).mean())
         regularization = max_f / torch.tensor(grad_of_params).mean()
         opt.zero_grad()
-        regularization = 0.1 * lambda_regularization + 0.9 * regularization
+        regularization = 0.5 * lambda_regularization + 0.5 * regularization
         lambda_regularization = regularization
 
         loss = loss_t.sum() + lambda_regularization * penalty
