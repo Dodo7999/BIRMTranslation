@@ -14,6 +14,8 @@ from corus import load_taiga_arzamas, load_taiga_fontanka, load_taiga_interfax, 
 import torch
 from evaluate import load
 
+torch.manual_seed(234)
+np.random.seed(234)
 
 def generator(data, batch_size, shuffle=False):
     ids = np.arange(len(data))
@@ -335,21 +337,15 @@ for i in range(n_epoch):
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
 
         los = loss_t.sum()
+        last_layers = list(model.children())[-1]
         los.backward(retain_graph=True)
-        grad_of_params = []
-        for parameter in model.parameters():
-            if parameter.grad is not None:
-                grad_of_params.append(torch.max(torch.abs(parameter.grad)))
-        max_f = max(grad_of_params)
+        var_f = torch.std(last_layers.weight.grad.detach())
         opt.zero_grad()
         penalty.backward(retain_graph=True)
-        grad_of_params = []
-        for parameter in model.parameters():
-            if parameter.grad is not None:
-                grad_of_params.append(torch.abs(parameter.grad).mean())
-        regularization = max_f / torch.tensor(grad_of_params).mean()
+        var = torch.std(last_layers.weight.grad.detach())
+        regularization = var_f / var
         opt.zero_grad()
-        regularization = 0.5 * lambda_regularization + 0.5 * regularization
+        regularization = 0.1 * lambda_regularization + 0.9 * regularization
         lambda_regularization = regularization
 
         loss = loss_t.sum() + lambda_regularization * penalty
