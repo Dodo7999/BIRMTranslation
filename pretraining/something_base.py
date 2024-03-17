@@ -369,7 +369,7 @@ for i in range(n_epoch):
                                 input_ids=input_ids2[:, :2].to(device),
                                 max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
                                 min_new_tokens=input_ids2.shape[1],
-                                temperature=0.6
+                                repetition_penalty=5.0
                             )
                         )
                         perplexity[j] += compute_perplexity(
@@ -405,7 +405,7 @@ for i in range(n_epoch):
                     input_ids=input_ids2[:, :2].to(device),
                     max_new_tokens=min(input_ids2.shape[1] + 10, 2048),
                     min_new_tokens=input_ids2.shape[1],
-                    temperature=0.6
+                    repetition_penalty=5.0
                 )
             )
             perplexity[j] += compute_perplexity(

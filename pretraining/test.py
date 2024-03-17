@@ -34,14 +34,24 @@ model_checkpoint = "ai-forever/rugpt3small_based_on_gpt2"
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 print(tokenizer)
 model = GPT2LMHeadModel.from_pretrained(model_checkpoint)
-print(model.config)
-model = GPT2LMHeadModel(config=model.config)
+# print(model.config)
+# model = GPT2LMHeadModel(config=model.config)
 
 
-model_inputs = tokenizer('I enjoy walking with my cute dog', return_tensors='pt')
+model_inputs = tokenizer('Я считаю что солнце прекрасно, ведь', return_tensors='pt')
 
 # generate 40 new tokens
-greedy_output = model.generate(**model_inputs, max_new_tokens=40)
+greedy_output = model.generate(**model_inputs, max_new_tokens=400, min_new_tokens=300,repetition_penalty=5.0)
+
+print("Output:\n" + 100 * '-')
+print(tokenizer.decode(greedy_output[0], skip_special_tokens=True))
+
+greedy_output = model.generate(**model_inputs, max_new_tokens=400, min_new_tokens=300,repetition_penalty=1.5)
+
+print("Output:\n" + 100 * '-')
+print(tokenizer.decode(greedy_output[0], skip_special_tokens=True))
+
+greedy_output = model.generate(**model_inputs, max_new_tokens=400, min_new_tokens=300,repetition_penalty=100.0)
 
 print("Output:\n" + 100 * '-')
 print(tokenizer.decode(greedy_output[0], skip_special_tokens=True))
