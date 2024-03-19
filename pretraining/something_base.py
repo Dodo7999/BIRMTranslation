@@ -325,9 +325,9 @@ print(f"Count test data = {len(test_inputs)}")
 
 batch_size = 4
 google_bleu = evaluate.load("google_bleu", keep_in_memory=True)
+index = 0
 for i in range(n_epoch):
     model.train()
-    index = 0
     train_loader = MyDataLoader(
         loader=Loader(inputs=train_inputs, labels=train_targets, tokenizer2=tokenizer),
         batch_size2=batch_size*2, shuffle=True)
