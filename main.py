@@ -161,9 +161,9 @@ train_loader = MyDataLoader(
 eval_loader = MyDataLoader(
     loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
     batch_size2=batch_size, shuffle=True)
+index = 0
 for i in range(n_epoch):
     model.train()
-    index = 0
     for envs in train_loader:
         model.train()
         loss_list = []
