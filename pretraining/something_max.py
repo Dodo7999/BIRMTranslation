@@ -328,11 +328,18 @@ for i in range(n_epoch):
         model.train()
         loss_list = []
         for input_ids, attention_mask in envs:
-            loss_list.append(model(
+            result = model(
                 attention_mask=attention_mask.to(device),
                 input_ids=input_ids.to(device),
                 labels=input_ids.to(device),
-            ).loss)
+            )
+            labels = input_ids.to(device)
+            random_vector = torch.normal(mean=1, std=0.1, size=(50264,)).to(device)
+            shift_logits = (result.logits * random_vector.reshape(1, 1, -1))[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            loss_fct = CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss_list.append(loss)
         loss_t = torch.stack(loss_list)
         penalty = ((loss_t - loss_t.mean()) ** 2).sum()
 
@@ -345,7 +352,7 @@ for i in range(n_epoch):
         var = torch.std(last_layers.weight.grad.detach())
         regularization = var_f / var
         opt.zero_grad()
-        regularization = 0.1 * lambda_regularization + 0.9 * regularization
+        regularization = 0.5 * lambda_regularization + regularization
         lambda_regularization = regularization
 
         loss = loss_t.sum() + lambda_regularization * penalty
