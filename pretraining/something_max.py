@@ -352,7 +352,7 @@ for i in range(n_epoch):
         var = torch.std(last_layers.weight.grad.detach())
         regularization = var_f / var
         opt.zero_grad()
-        regularization = 0.1 * lambda_regularization + regularization
+        regularization = 0.2 * lambda_regularization + regularization
         lambda_regularization = regularization
 
         loss = loss_t.sum() + lambda_regularization * penalty
