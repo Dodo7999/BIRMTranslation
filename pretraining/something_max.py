@@ -17,6 +17,7 @@ from evaluate import load
 torch.manual_seed(234)
 np.random.seed(234)
 
+
 def generator(data, batch_size, shuffle=False):
     ids = np.arange(len(data))
     steps = len(data) // batch_size
@@ -322,7 +323,7 @@ for i in range(n_epoch):
         batch_size2=batch_size, clusters=train_clusters, shuffle=True)
     val_loader = MyDataLoader(
         loader=Loader(inputs=val_inputs, labels=val_targets, tokenizer2=tokenizer),
-        batch_size2=batch_size*2, clusters=val_clusters, shuffle=False)
+        batch_size2=batch_size * 2, clusters=val_clusters, shuffle=False)
     jk = 0
     for envs in train_loader:
         model.train()
@@ -353,7 +354,10 @@ for i in range(n_epoch):
         regularization = var_f / var
         opt.zero_grad()
         regularization = 0.2 * lambda_regularization + regularization
-        lambda_regularization = regularization
+        if regularization < 100.0:
+            lambda_regularization = regularization
+        else:
+            lambda_regularization = torch.tensor(100.0).to(device)
 
         loss = loss_t.sum() + lambda_regularization * penalty
         loss.backward()
