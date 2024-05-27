@@ -247,6 +247,7 @@ for i, path in enumerate(paths):
                     train_set.append(tokenizer.bos_token + text_p + tokenizer.eos_token)
                     clusters.append(len(text_p))
 clusters = np.array(clusters)
+clusters.tofile(f"/userspace/bma/BIRMTranslation/length.dat")
 clusters = KMeans(n_clusters=3).fit(clusters.reshape(-1, 1)).labels_
 train_set = list(map(preprocess_function, train_set))
 train_set = np.array(train_set, dtype=object)
