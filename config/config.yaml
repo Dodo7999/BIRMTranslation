@@ -1,0 +1,49 @@
+data_type: translate # translate/paraphrase/definitions
+data_path: data/translate
+
+columns:
+  - src_text
+  - dst_text
+#  - original
+#  - ru
+#  - word
+#  - definition
+
+
+data_train: data/processed/train
+data_test: data/processed/test
+
+model_type: "qwen" # mt5 or qwen
+#model_path: models/mt5-small/
+#tokenizer_path: models/mt5-small/
+model_path: models/qwen/
+tokenizer_path: models/qwen/
+device: "cuda:0"
+
+shift_type: length # length/complexity/bert_clusters
+
+new_model_path: models/model/
+
+params:
+  output_dir: data/models/processed
+  gradient_accumulation_steps: 16
+  bf16: False
+  use_cpu: False
+  logging_steps: 2
+  learning_rate: 5e-4
+  num_train_epochs: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 2
+  eval_accumulation_steps: 1
+  evaluation_strategy: steps
+  bf16_full_eval: False
+  report_to: none
+  save_strategy: steps
+  save_total_limit: 1
+  overwrite_output_dir: true
+  load_best_model_at_end: true
+  lr_scheduler_type: linear #cosine
+  greater_is_better: true
+  warmup_ratio: 0.05
+  max_grad_norm: 0.1
+  optim: adamw_torch
