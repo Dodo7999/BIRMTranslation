@@ -1,6 +1,8 @@
 import evaluate
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch import nn
+from torch.nn import CrossEntropyLoss
+from torch.utils.data import Dataset
 from tqdm import tqdm
 import numpy as np
 
@@ -23,7 +25,7 @@ def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
         np.random.shuffle(ids)
     for i in range(batch_num):
         batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
-        yield data_env[0][batch_ids], data_env[1][batch_ids]
+        yield data_env[0][batch_ids], data_env[1][batch_ids], data_env[2][batch_ids], data_env[3][batch_ids]
 
 
 def generatorWithEnviroment(data, batch_size, clusters, shuffle=False):
@@ -57,24 +59,26 @@ class MyDataLoader:
 
 
 class Loader(Dataset):
-    def __init__(self, inputs, tokenizer, is_val = False):
+    def __init__(self, inputs, tokenizer, test_dataset_size=None, is_val=False):
         self.inputs = inputs
         self.tokenizer = tokenizer
         self.is_val = is_val
+        self.test_dataset_size = test_dataset_size
 
     def __len__(self):
         if not self.is_val:
             return len(self.inputs)
-        return 100
+        return self.test_dataset_size
 
     def __getitem__(self, idx):
         inputs_list = self.inputs[idx]
+
         d = {
             "labels": "input_ids",
             "labels_attention_mask": "attention_mask"
         }
-        input_features = {k: inputs_list[k] for k in ['input_ids','attention_mask']}
-        label_features = {d[k]: inputs_list[k] for k in ['labels','labels_attention_mask']}
+        input_features = {k: np.array(inputs_list[k])[:, 0] for k in ['input_ids', 'attention_mask']}
+        label_features = {d[k]: np.array(inputs_list[k])[:, 0] for k in ['labels', 'labels_attention_mask']}
 
         batch = self.tokenizer.pad(
             input_features,
@@ -100,7 +104,7 @@ class Loader(Dataset):
         return input_batch, attention_bacth, target_input_batch, target_attention_batch
 
 
-def evaluate_seq2seq_model(model, val_dataset, tokenizer, batch_size, device):
+def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
     model.eval()
 
     bleu = evaluate.load("bleu")
@@ -113,84 +117,160 @@ def evaluate_seq2seq_model(model, val_dataset, tokenizer, batch_size, device):
     }
     with torch.no_grad():
         val_loader = MyDataLoader(
-            loader=Loader(inputs=val_dataset, tokenizer=tokenizer, is_val=True),
-            batch_size2=batch_size, shuffle=True)
-        for input_batch, attention_batch, target_input_batch, target_attention_batch in tqdm(val_loader, desc="Evaluating"):
-
+            loader=Loader(
+                inputs=val_dataset,
+                tokenizer=tokenizer,
+                test_dataset_size=cfg.train_params.test_dataset_size,
+                is_val=True
+            ),
+            batch_size2=cfg.train_params.batch_size,
+            shuffle=True
+        )
+        for input_batch, attention_batch, target_input_batch, target_attention_batch in tqdm(val_loader,
+                                                                                             desc="Evaluating"):
             outputs = model(
-                input_ids=input_batch.to(device),
-                attention_mask=attention_batch.to(device),
-                labels=target_input_batch.to(device)
+                input_ids=input_batch.to(cfg.train_params.device),
+                attention_mask=attention_batch.to(cfg.train_params.device),
+                labels=target_input_batch.to(cfg.train_params.device)
             )
             logits = outputs.logits
 
             generated_tokens = logits.argmax(dim=-1)
-
+            print(generated_tokens.shape)
+            print(target_input_batch.shape)
             decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
             decoded_labels = tokenizer.batch_decode(target_input_batch, skip_special_tokens=True)
-            bertscore_result = bertscore.compute(predictions=decoded_preds, references=decoded_labels,
-                                        model_type="distilbert-base-uncased")
+            bertscore_result = bertscore.compute(
+                predictions=decoded_preds,
+                references=decoded_labels,
+                model_type="distilbert-base-uncased"
+            )
             print(decoded_preds)
             print(decoded_labels)
             bertscore_results['precision'] += bertscore_result['precision']
             bertscore_results['recall'] += bertscore_result['recall']
             bertscore_results['f1'] += bertscore_result['f1']
-            bleu_results.append(bleu.compute(predictions=decoded_preds, references=[[l] for l in decoded_labels])['bleu'])
+            bleu_results.append(
+                bleu.compute(predictions=decoded_preds, references=[[l] for l in decoded_labels])['bleu'])
 
-    print(f"Bert Score: precition = {np.array(bertscore_results['precision']).mean()}, recall = {np.array(bertscore_results['recall']).mean()}, f1 = {np.array(bertscore_results['f1']).mean()}; BLEU: {np.array(bleu_results).mean()}")
+    print(
+        f"Bert Score: precition = {np.array(bertscore_results['precision']).mean()}, recall = {np.array(bertscore_results['recall']).mean()}, f1 = {np.array(bertscore_results['f1']).mean()}; BLEU: {np.array(bleu_results).mean()}")
     model.train()
 
 
-def train_seq2seq_model(model, train_dataset, val_dataset, tokenizer, num_epochs=3, batch_size=2, learning_rate=5e-4,
-                        device='cuda'):
-    # Переключить модель в режим обучения
-    model.to(device)
+def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
+    model.to(cfg.train_params.device)
     model.train()
 
-    # Оптимизатор
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.999996)
+    if cfg.shift.type != "None":
+        train_clusters = np.fromfile(f"{cfg.shift.path}/clusters_train.dat", dtype=int)
+        lambda_regularization = torch.tensor(1.0)
 
-    # Цикл обучения
-    for epoch in range(num_epochs):
+    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.train_params.learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=cfg.train_params.gamma)
+    optimization_steps = 0
+    for epoch in range(cfg.train_params.num_epochs):
         i = 0
-        train_loader = MyDataLoader(
-            loader=Loader(inputs=train_dataset, tokenizer=tokenizer),
-            batch_size2=batch_size, shuffle=True)
-        total_loss = 0
-        kommulative = 0
-        progress = tqdm(train_loader, desc=f"Training Epoch {epoch + 1}/{num_epochs}, loss = {total_loss}")
-        for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
-            i+=1
-            kommulative+=1
+        if cfg.shift.type != "None":
+            train_loader = MyDataLoader(
+                loader=Loader(inputs=train_dataset, tokenizer=tokenizer), clusters=train_clusters,
+                batch_size2=cfg.train_params.batch_size, shuffle=True)
 
-
-            # Прямой проход (forward pass)
-            outputs = model(
-                input_ids=input_batch.to(device),
-                attention_mask=attention_batch.to(device),
-                labels=target_input_batch.to(device)
+            total_loss = 0
+            kommulative = 0
+            progress = tqdm(
+                train_loader,
+                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}"
             )
-            loss = outputs.loss
+            for envs in progress:
+                i+=1
+                kommulative += 1
+                loss_list = []
+                for input_batch, attention_batch, target_input_batch, target_attention_batch in envs:
+                    result = model(
+                        attention_mask=attention_batch.to(cfg.train_params.device),
+                        input_ids=input_batch.to(cfg.train_params.device),
+                        labels=target_input_batch.to(cfg.train_params.device),
+                    )
+                    labels = target_input_batch.to(cfg.train_params.device)
+                    random_vector = torch.normal(mean=1, std=0.1, size=(result.logits.shape[2],)).to(cfg.train_params.device)
+                    shift_logits = (result.logits.float() * random_vector.reshape(1, 1, -1))[..., :-1, :].contiguous()
+                    shift_labels = labels[..., 1:].contiguous()
+                    loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100, reduction="mean")
+                    loss_list.append(loss)
+                loss_t = torch.stack(loss_list)
+                penalty = ((loss_t - loss_t.mean()) ** 2).sum()
 
-            # Обратный проход (backward pass) и шаг оптимизации
-            (loss / 16.0).backward()
-            total_loss += loss.detach().cpu().item() / 16
-            if kommulative == 16:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-                optimizer.step()
-                scheduler.step()
-                # Обнуление градиентов
+                los = loss_t.sum()
+                last_layers = list(model.children())[-1]
+                los.backward(retain_graph=True)
+                var_f = torch.std(last_layers.weight.grad.detach())
                 optimizer.zero_grad()
-                kommulative = 0
-                progress.set_description(f"Training Epoch {epoch + 1}/{num_epochs}, loss = {total_loss}")
-                total_loss = 0
+                penalty.backward(retain_graph=True)
+                var = torch.std(last_layers.weight.grad.detach())
+                regularization = var_f / var
+                optimizer.zero_grad()
+                regularization = 0.2 * lambda_regularization + regularization
+                if regularization < 10000.0:
+                    lambda_regularization = regularization
+                else:
+                    lambda_regularization = torch.tensor(10000.0).to(cfg.train_params.device)
 
-            if i % 20000 == 0:
-                evaluate_seq2seq_model(model, val_dataset, tokenizer, batch_size, device)
-                model.save_pretrained("C:\\Users\\brat_\\PycharmProjects\\BIRMTranslation\\model_checkpoints", from_pt=True)
+                loss = loss_t.sum() + lambda_regularization * penalty
 
-        evaluate_seq2seq_model(model, val_dataset, tokenizer, batch_size, device)
-        model.save_pretrained("C:\\Users\\brat_\\PycharmProjects\\BIRMTranslation\\model_checkpoints", from_pt=True)
+                (loss / cfg.train_params.kommulation_steps).backward()
+                total_loss += loss.detach().cpu().item() / cfg.train_params.kommulation_steps
+                if kommulative == cfg.train_params.kommulation_steps:
+                    optimization_steps += 1
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad()
+                    kommulative = 0
+                    progress.set_description(
+                        f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {loss_t.clone().detach().cpu()}, optimization steps = {optimization_steps}, lambda = {regularization}")
+                    total_loss = 0
+                if i % cfg.train_params.eval_every_step == 0:
+                    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+                    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_optimization_steps", from_pt=True)
+
+        else:
+            train_loader = MyDataLoader(
+                loader=Loader(inputs=train_dataset, tokenizer=tokenizer),
+                batch_size2=cfg.train_params.batch_size, shuffle=True)
+
+            total_loss = 0
+            kommulative = 0
+            progress = tqdm(train_loader,
+                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
+            for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
+                i += 1
+                kommulative += 1
+                outputs = model(
+                    input_ids=input_batch.to(cfg.train_params.device),
+                    attention_mask=attention_batch.to(cfg.train_params.device),
+                    labels=target_input_batch.to(cfg.train_params.device)
+                )
+                loss = outputs.loss
+
+                (loss / cfg.train_params.kommulation_steps).backward()
+                total_loss += loss.detach().cpu().item() / cfg.train_params.kommulation_steps
+                if kommulative == cfg.train_params.kommulation_steps:
+                    optimization_steps += 1
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad()
+                    kommulative = 0
+                    progress.set_description(
+                        f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
+                    total_loss = 0
+
+            if i % cfg.train_params.eval_every_step == 0:
+                evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+                model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_optimization_steps", from_pt=True)
+
+    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_final", from_pt=True)
 
     return model

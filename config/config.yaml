@@ -1,49 +1,34 @@
-data_type: translate # translate/paraphrase/definitions
-data_path: data/translate
-
-columns:
-  - src_text
-  - dst_text
-#  - original
-#  - ru
-#  - word
-#  - definition
-
+data:
+  type: paraphrase # translate/paraphrase
+  path: data/paraphrase
+#  source_col: src_text
+#  target_col: dst_text
+  source_col: original
+  target_col: ru
 
 data_train: data/processed/train
 data_test: data/processed/test
 
-model_type: "qwen" # mt5 or qwen
-#model_path: models/mt5-small/
-#tokenizer_path: models/mt5-small/
-model_path: models/qwen/
-tokenizer_path: models/qwen/
-device: "cuda:0"
+model:
+  type: "qwen" # mt5 or qwen
+#  path: models/mt5-small/
+  path: models/qwen/
+  device: "cuda:0"
 
-shift_type: length # length/complexity/bert_clusters
+shift:
+  type: None # None/length/clusters
+  path: data/processed/clusters
+
 
 new_model_path: models/model/
+model_save_path: "/userspace/bma/BIRMTranslation/model_checkpoints"
 
-params:
-  output_dir: data/models/processed
-  gradient_accumulation_steps: 16
-  bf16: False
-  use_cpu: False
-  logging_steps: 2
-  learning_rate: 5e-4
-  num_train_epochs: 1
-  per_device_train_batch_size: 4
-  per_device_eval_batch_size: 2
-  eval_accumulation_steps: 1
-  evaluation_strategy: steps
-  bf16_full_eval: False
-  report_to: none
-  save_strategy: steps
-  save_total_limit: 1
-  overwrite_output_dir: true
-  load_best_model_at_end: true
-  lr_scheduler_type: linear #cosine
-  greater_is_better: true
-  warmup_ratio: 0.05
-  max_grad_norm: 0.1
-  optim: adamw_torch
+train_params:
+  test_dataset_size: 1000
+  num_epochs: 2
+  batch_size: 2
+  learning_rate: 1e-3
+  gamma: 0.999996
+  device: 'cuda'
+  kommulation_steps: 2
+  eval_every_step: 1000
