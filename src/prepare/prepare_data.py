@@ -18,7 +18,7 @@ def embed_bert_cls(text, model, tokenizer):
 
 
 def prepare_data(cfg: DictConfig):
-    ds = load_dataset(cfg.data.path, split='train[:1%]')
+    ds = load_dataset(cfg.data.path, split='train[:100%]')
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.path, local_files_only=True)
     if cfg.shift.type == "clusters":
         tokenizer_b = AutoTokenizer.from_pretrained('models/rubert', local_files_only=True)

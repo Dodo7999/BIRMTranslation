@@ -25,10 +25,10 @@ model_save_path: "/userspace/bma/BIRMTranslation/model_checkpoints"
 
 train_params:
   test_dataset_size: 1000
-  num_epochs: 2
-  batch_size: 2
+  num_epochs: 4
+  batch_size: 32
   learning_rate: 1e-3
   gamma: 0.999996
   device: 'cuda'
-  kommulation_steps: 2
+  kommulation_steps: 1
   eval_every_step: 1000
