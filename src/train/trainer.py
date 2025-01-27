@@ -107,8 +107,8 @@ class Loader(Dataset):
 def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
     model.eval()
 
-    bleu = evaluate.load("bleu")
-    bertscore = evaluate.load("bertscore")
+    bleu = evaluate.load("./bleu")
+    bertscore = evaluate.load("./bertscore")
     bleu_results = []
     bertscore_results = {
         'precision': [],

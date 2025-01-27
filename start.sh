@@ -5,6 +5,7 @@
 #SBATCH --output=/userspace/bma/qwen_erm_paraphrase.log
 #SBATCH --partition=a100
 #SBATCH --nodes=1
+#SBATCH --nodelist=ngpu03
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-socket=1
