@@ -266,9 +266,9 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                         f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
                     total_loss = 0
 
-            if i % cfg.train_params.eval_every_step == 0:
-                evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
-                model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_optimization_steps", from_pt=True)
+                if i % cfg.train_params.eval_every_step == 0:
+                    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+                    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_optimization_steps", from_pt=True)
 
     evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
     model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_final", from_pt=True)

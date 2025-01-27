@@ -31,4 +31,4 @@ train_params:
   gamma: 0.999996
   device: 'cuda'
   kommulation_steps: 1
-  eval_every_step: 1000
+  eval_every_step: 5000
