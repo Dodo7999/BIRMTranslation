@@ -119,11 +119,8 @@ class BERTScore(evaluate.Metric):
                     }
                 ),
             ],
-            codebase_urls=["https://github.com/Tiiiger/bert_score"],
-            reference_urls=[
-                "https://github.com/Tiiiger/bert_score",
-                "https://arxiv.org/abs/1904.09675",
-            ],
+            codebase_urls=[],
+            reference_urls=[],
         )
 
     def _compute(

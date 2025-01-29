@@ -1,3 +1,5 @@
+import logging
+
 import evaluate
 import torch
 from torch import nn
@@ -5,6 +7,8 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import numpy as np
+
+log = logging.getLogger(__file__.split('/')[-1])
 
 
 def generator(data, batch_size, shuffle=False):
@@ -127,7 +131,7 @@ def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
             shuffle=True
         )
         for input_batch, attention_batch, target_input_batch, target_attention_batch in tqdm(val_loader,
-                                                                                             desc="Evaluating"):
+                                                                                             desc="Evaluating", position=0, leave=False):
             outputs = model(
                 input_ids=input_batch.to(cfg.train_params.device),
                 attention_mask=attention_batch.to(cfg.train_params.device),
@@ -136,8 +140,8 @@ def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
             logits = outputs.logits
 
             generated_tokens = logits.argmax(dim=-1)
-            print(generated_tokens.shape)
-            print(target_input_batch.shape)
+            # log.info(generated_tokens.shape)
+            # log.info(target_input_batch.shape)
             decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
             decoded_labels = tokenizer.batch_decode(target_input_batch, skip_special_tokens=True)
             bertscore_result = bertscore.compute(
@@ -145,15 +149,16 @@ def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
                 references=decoded_labels,
                 model_type="distilbert-base-uncased"
             )
-            print(decoded_preds)
-            print(decoded_labels)
+            if len(bleu_results) < 3:
+                log.info(decoded_preds)
+                log.info(decoded_labels)
             bertscore_results['precision'] += bertscore_result['precision']
             bertscore_results['recall'] += bertscore_result['recall']
             bertscore_results['f1'] += bertscore_result['f1']
             bleu_results.append(
                 bleu.compute(predictions=decoded_preds, references=[[l] for l in decoded_labels])['bleu'])
 
-    print(
+    log.info(
         f"Bert Score: precition = {np.array(bertscore_results['precision']).mean()}, recall = {np.array(bertscore_results['recall']).mean()}, f1 = {np.array(bertscore_results['f1']).mean()}; BLEU: {np.array(bleu_results).mean()}")
     model.train()
 
@@ -180,7 +185,7 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             kommulative = 0
             progress = tqdm(
                 train_loader,
-                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}"
+                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}", position=0, leave=False
             )
             for envs in progress:
                 i+=1
@@ -242,14 +247,14 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             total_loss = 0
             kommulative = 0
             progress = tqdm(train_loader,
-                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
+                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}", position=0, leave=False)
             for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
                 i += 1
                 kommulative += 1
-                outputs = model(
-                    input_ids=input_batch.to(cfg.train_params.device),
+                outputs =  model(
                     attention_mask=attention_batch.to(cfg.train_params.device),
-                    labels=target_input_batch.to(cfg.train_params.device)
+                    input_ids=input_batch.to(cfg.train_params.device),
+                    labels=target_input_batch.to(cfg.train_params.device),
                 )
                 loss = outputs.loss
 

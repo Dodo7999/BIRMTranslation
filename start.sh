@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #SBATCH --job-name=qwen_erm_paraphrase
-#SBATCH --error=/userspace/bma/qwen_erm_paraphrase.log
+#SBATCH --error=/userspace/bma/qwen_erm_paraphrase_err.log
 #SBATCH --output=/userspace/bma/qwen_erm_paraphrase.log
 #SBATCH --partition=a100
 #SBATCH --nodes=1
