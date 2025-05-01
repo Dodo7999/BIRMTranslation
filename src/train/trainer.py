@@ -249,7 +249,6 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             progress = tqdm(
                 train_loader,
                 desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}", position=0, leave=False
-                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}", position=0, leave=False
             )
             for envs in progress:
                 i+=1
@@ -313,11 +312,9 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             kommulative = 0
             progress = tqdm(train_loader,
                             desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}", position=0, leave=False)
-                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}", position=0, leave=False)
             for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
                 i += 1
                 kommulative += 1
-                outputs =  model(
                 outputs =  model(
                     attention_mask=attention_batch.to(cfg.train_params.device),
                     input_ids=input_batch.to(cfg.train_params.device),
