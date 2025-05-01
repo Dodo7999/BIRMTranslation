@@ -1,34 +1,34 @@
 data:
-  type: paraphrase # translate/paraphrase
-  path: data/paraphrase
-#  source_col: src_text
+  type: rulm # translate/paraphrase
+  path: "/userspace/bma/BIRMTranslation/data/rulm"
+  source_col: text
 #  target_col: dst_text
-  source_col: original
-  target_col: ru
+#  source_col: original
+#  target_col: ru
 
-data_train: data/processed/train
-data_test: data/processed/test
+data_train: "/userspace/bma/BIRMTranslation/data/processed/train"
+data_test: "/userspace/bma/BIRMTranslation/data/processed/test"
 
 model:
   type: "qwen" # mt5 or qwen
 #  path: models/mt5-small/
-  path: models/qwen/
+  path: "/userspace/bma/BIRMTranslation/models/qwen"
   device: "cuda:0"
 
 shift:
-  type: None # None/length/clusters
-  path: data/processed/clusters
+  type: length # None/length/clusters
+  path: "/userspace/bma/BIRMTranslation/data/processed/clusters"
 
 
-new_model_path: models/model/
+new_model_path: "/userspace/bma/BIRMTranslation/models/model"
 model_save_path: "/userspace/bma/BIRMTranslation/model_checkpoints"
 
 train_params:
-  test_dataset_size: 1000
-  num_epochs: 4
-  batch_size: 32
+  test_dataset_size: 100
+  num_epochs: 1
+  batch_size: 4
   learning_rate: 1e-3
-  gamma: 0.999996
+  gamma: 0.99996
   device: 'cuda'
   kommulation_steps: 1
-  eval_every_step: 500
+  eval_every_step: 10000

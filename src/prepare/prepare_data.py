@@ -7,6 +7,8 @@ from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
 import os
 
+from src.rulm import RuLMDataset
+
 
 def embed_bert_cls(text, model, tokenizer):
     t = tokenizer(text, padding=True, truncation=True, return_tensors='pt')
@@ -18,7 +20,14 @@ def embed_bert_cls(text, model, tokenizer):
 
 
 def prepare_data(cfg: DictConfig):
-    ds = load_dataset(cfg.data.path, split='train[:100%]')
+    # Отключаем кэширование для Hugging Face
+    os.environ["HF_DATASETS_CACHE"] = ""
+    os.environ["TRANSFORMERS_CACHE"] = ""
+    
+    # ds = load_dataset(cfg.data.path, split='train[:10%]')
+    dataset = RuLMDataset(base_path=cfg.data.path)
+    dataset.download_and_prepare()
+    ds = dataset.as_dataset(split='train[:100%]')
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.path, local_files_only=True)
     if cfg.shift.type == "clusters":
         tokenizer_b = AutoTokenizer.from_pretrained('models/rubert', local_files_only=True)
@@ -34,16 +43,16 @@ def prepare_data(cfg: DictConfig):
             return_tensors='pt'
         )
 
-        label = tokenizer(
-            examples[columns[1]],
-            padding='max_length',
-            truncation=True,
-            max_length=length,
-            return_tensors='pt',
-        )
+        # label = tokenizer(
+        #     examples[columns[1]],
+        #     padding='max_length',
+        #     truncation=True,
+        #     max_length=length,
+        #     return_tensors='pt',
+        # )
 
-        input["labels"] = label.input_ids
-        input["labels_attention_mask"] = label.attention_mask
+        input["labels"] = input.input_ids
+        input["labels_attention_mask"] = input.attention_mask
 
         if shift == "clusters":
             embeddings = embed_bert_cls(examples[columns[0]], model_b, tokenizer_b)
@@ -56,11 +65,12 @@ def prepare_data(cfg: DictConfig):
         prepare_dataset_translate,
         batched=False,
         fn_kwargs={
-            "columns": [cfg.data.source_col, cfg.data.target_col],
+            "columns": [cfg.data.source_col],
             "tokenizer": tokenizer,
             "length": 512,
             "shift": cfg.shift.type
-        }
+        },
+        load_from_cache_file=False
     )
 
     if not os.path.exists(cfg.shift.path):

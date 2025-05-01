@@ -34,10 +34,13 @@ def get_model_pretrained(path, type):
         config.hidden_size = 896
         config.intermediate_size = 1024
         config.num_hidden_layers = 12
+        config.vocab_size = 32_768
+        # print(config)
         new_model = Qwen2ForCausalLM(config)
         for layer in new_model.model.layers:
             layer.mlp.act_fn = Sine()
-        new_model.model.embed_tokens = pretrained.model.embed_tokens
+        # new_model.model.embed_tokens = pretrained.model.embed_tokens
+        print(new_model)
         return new_model
 
 

@@ -17,7 +17,7 @@ import datasets
 
 import evaluate
 
-from .nmt_bleu import compute_bleu  # From: https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py
+from .app import compute_bleu
 from .tokenizer_13a import Tokenizer13a
 
 
@@ -105,11 +105,8 @@ class Bleu(evaluate.Metric):
                     }
                 ),
             ],
-            codebase_urls=["https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py"],
-            reference_urls=[
-                "https://en.wikipedia.org/wiki/BLEU",
-                "https://towardsdatascience.com/evaluating-text-output-in-nlp-bleu-at-your-own-risk-e8609665a213",
-            ],
+            codebase_urls=[],
+            reference_urls=[],
         )
 
     def _compute(self, predictions, references, tokenizer=Tokenizer13a(), max_order=4, smooth=False):

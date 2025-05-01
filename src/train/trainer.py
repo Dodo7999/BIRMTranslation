@@ -1,47 +1,51 @@
+import logging
+
 import evaluate
 import torch
 from torch import nn
-from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import numpy as np
 
+log = logging.getLogger(__file__.split('/')[-1])
+
 
 def generator(data, batch_size, shuffle=False):
     ids = np.arange(len(data))
-    steps = len(data) // batch_size
-    if len(data) % batch_size != 0:
-        steps += 1
     if shuffle:
         np.random.shuffle(ids)
+    steps = (len(data) + batch_size - 1) // batch_size  # More efficient ceiling division
     for i in range(steps):
-        batch_ids = ids[i * batch_size: (i + 1) * batch_size]
-        yield data[batch_ids][0], data[batch_ids][1], data[batch_ids][2], data[batch_ids][3]
+        start_idx = i * batch_size
+        end_idx = min((i + 1) * batch_size, len(data))
+        batch_ids = ids[start_idx:end_idx]
+        yield tuple(data[batch_ids][j] for j in range(4))  # More memory efficient
 
 
 def generatorEnviroment(data_env, batch_size, batch_num, shuffle=False):
+    data_len = len(data_env[0])
     ids = np.arange(batch_size * batch_num)
     if shuffle:
         np.random.shuffle(ids)
     for i in range(batch_num):
-        batch_ids = ids[i * batch_size: (i + 1) * batch_size] % len(data_env[0])
-        yield data_env[0][batch_ids], data_env[1][batch_ids], data_env[2][batch_ids], data_env[3][batch_ids]
+        start_idx = i * batch_size
+        end_idx = (i + 1) * batch_size
+        batch_ids = ids[start_idx:end_idx] % data_len
+        yield tuple(data_env[j][batch_ids] for j in range(4))  # More memory efficient
 
 
 def generatorWithEnviroment(data, batch_size, clusters, shuffle=False):
     unique_clusters = np.unique(clusters)
-    size_biggest_cluster = 0
-    for i in unique_clusters:
-        size_biggest_cluster = max(len(clusters[clusters == i]), size_biggest_cluster)
-    batch_num = size_biggest_cluster // batch_size
-    env_gen = []
-    for i in unique_clusters:
-        env_gen.append(generatorEnviroment(data[clusters == i], batch_size, batch_num, shuffle))
-    for i in range(batch_num):
-        batch = []
-        for j in range(len(unique_clusters)):
-            batch.append(next(env_gen[j]))
-        yield batch
+    size_biggest_cluster = max(len(clusters[clusters == i]) for i in unique_clusters)
+    batch_num = (size_biggest_cluster + batch_size - 1) // batch_size  # More efficient ceiling division
+    
+    # Pre-compute cluster data to avoid repeated filtering
+    cluster_data = {i: data[clusters == i] for i in unique_clusters}
+    env_gen = [generatorEnviroment(cluster_data[i], batch_size, batch_num, shuffle) 
+               for i in unique_clusters]
+    
+    for _ in range(batch_num):
+        yield [next(gen) for gen in env_gen]
 
 
 class MyDataLoader:
@@ -64,28 +68,39 @@ class Loader(Dataset):
         self.tokenizer = tokenizer
         self.is_val = is_val
         self.test_dataset_size = test_dataset_size
-
-    def __len__(self):
-        if not self.is_val:
-            return len(self.inputs)
-        return self.test_dataset_size
-
-    def __getitem__(self, idx):
-        inputs_list = self.inputs[idx]
-
-        d = {
+        # Pre-compute mapping dictionary
+        self.feature_mapping = {
             "labels": "input_ids",
             "labels_attention_mask": "attention_mask"
         }
-        input_features = {k: np.array(inputs_list[k])[:, 0] for k in ['input_ids', 'attention_mask']}
-        label_features = {d[k]: np.array(inputs_list[k])[:, 0] for k in ['labels', 'labels_attention_mask']}
+        # Pre-compute feature keys
+        self.input_keys = ['input_ids', 'attention_mask']
+        self.label_keys = ['labels', 'labels_attention_mask']
 
+    def __len__(self):
+        return self.test_dataset_size if self.is_val else len(self.inputs)
+
+    def __getitem__(self, idx):
+        inputs_list = self.inputs[idx]
+        
+        # More efficient dictionary comprehension
+        input_features = {
+            k: np.array(inputs_list[k])[:, 0] 
+            for k in self.input_keys
+        }
+        label_features = {
+            self.feature_mapping[k]: np.array(inputs_list[k])[:, 0] 
+            for k in self.label_keys
+        }
+
+        # Process input features
         batch = self.tokenizer.pad(
             input_features,
             padding=True,
             return_tensors="pt",
         )
 
+        # Process label features
         with self.tokenizer.as_target_tokenizer():
             labels_batch = self.tokenizer.pad(
                 label_features,
@@ -93,28 +108,36 @@ class Loader(Dataset):
                 return_tensors="pt",
             )
 
+        # Process target input batch
         target_input_batch = labels_batch["input_ids"]
         if not self.is_val:
             target_input_batch[target_input_batch == self.tokenizer.pad_token_id] = -100
-        target_attention_batch = labels_batch['attention_mask']
 
-        input_batch = batch['input_ids']
-        attention_bacth = batch['attention_mask']
-
-        return input_batch, attention_bacth, target_input_batch, target_attention_batch
+        return (
+            batch['input_ids'],
+            batch['attention_mask'],
+            target_input_batch,
+            labels_batch['attention_mask']
+        )
 
 
 def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
     model.eval()
-
+    
+    # Load metrics once
     bleu = evaluate.load("./bleu")
     bertscore = evaluate.load("./bertscore")
-    bleu_results = []
-    bertscore_results = {
-        'precision': [],
-        'recall': [],
-        'f1': []
+    
+    # Initialize accumulators for metrics
+    metrics = {
+        'bleu': [],
+        'bertscore': {
+            'precision': [],
+            'recall': [],
+            'f1': []
+        }
     }
+    
     with torch.no_grad():
         val_loader = MyDataLoader(
             loader=Loader(
@@ -126,36 +149,77 @@ def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
             batch_size2=cfg.train_params.batch_size,
             shuffle=True
         )
-        for input_batch, attention_batch, target_input_batch, target_attention_batch in tqdm(val_loader,
-                                                                                             desc="Evaluating"):
+        
+        for input_batch, attention_batch, target_input_batch, target_attention_batch in tqdm(
+            val_loader,
+            desc="Evaluating",
+            position=0,
+            leave=False
+        ):
+            # Move tensors to device once
+            input_batch = input_batch.to(cfg.train_params.device)
+            attention_batch = attention_batch.to(cfg.train_params.device)
+            target_input_batch = target_input_batch.to(cfg.train_params.device)
+            
+            # Get model outputs
             outputs = model(
-                input_ids=input_batch.to(cfg.train_params.device),
-                attention_mask=attention_batch.to(cfg.train_params.device),
-                labels=target_input_batch.to(cfg.train_params.device)
+                input_ids=input_batch,
+                attention_mask=attention_batch,
+                labels=target_input_batch
             )
-            logits = outputs.logits
-
-            generated_tokens = logits.argmax(dim=-1)
-            print(generated_tokens.shape)
-            print(target_input_batch.shape)
+            
+            # Generate predictions
+            generated_tokens = outputs.logits.argmax(dim=-1)
+            
+            # Decode predictions and labels
             decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
             decoded_labels = tokenizer.batch_decode(target_input_batch, skip_special_tokens=True)
+            
+            # Compute BERTScore
             bertscore_result = bertscore.compute(
                 predictions=decoded_preds,
                 references=decoded_labels,
                 model_type="distilbert-base-uncased"
             )
-            print(decoded_preds)
-            print(decoded_labels)
-            bertscore_results['precision'] += bertscore_result['precision']
-            bertscore_results['recall'] += bertscore_result['recall']
-            bertscore_results['f1'] += bertscore_result['f1']
-            bleu_results.append(
-                bleu.compute(predictions=decoded_preds, references=[[l] for l in decoded_labels])['bleu'])
-
-    print(
-        f"Bert Score: precition = {np.array(bertscore_results['precision']).mean()}, recall = {np.array(bertscore_results['recall']).mean()}, f1 = {np.array(bertscore_results['f1']).mean()}; BLEU: {np.array(bleu_results).mean()}")
+            
+            # Log first 3 examples for debugging
+            if len(metrics['bleu']) < 3:
+                log.info(tokenizer.batch_decode(input_batch, skip_special_tokens=True))
+                log.info(decoded_preds)
+                log.info(decoded_labels)
+            
+            # Accumulate metrics
+            metrics['bertscore']['precision'].extend(bertscore_result['precision'])
+            metrics['bertscore']['recall'].extend(bertscore_result['recall'])
+            metrics['bertscore']['f1'].extend(bertscore_result['f1'])
+            metrics['bleu'].append(
+                bleu.compute(
+                    predictions=decoded_preds,
+                    references=[[l] for l in decoded_labels]
+                )['bleu']
+            )
+            
+            # Clear CUDA cache if using GPU
+            if cfg.train_params.device == 'cuda':
+                torch.cuda.empty_cache()
+    
+    # Compute final metrics
+    final_metrics = {
+        'bertscore': {
+            k: np.array(v).mean() for k, v in metrics['bertscore'].items()
+        },
+        'bleu': np.array(metrics['bleu']).mean()
+    }
+    
+    log.info(
+        f"Bert Score: precision = {final_metrics['bertscore']['precision']:.4f}, "
+        f"recall = {final_metrics['bertscore']['recall']:.4f}, "
+        f"f1 = {final_metrics['bertscore']['f1']:.4f}; "
+        f"BLEU: {final_metrics['bleu']:.4f}"
+    )
+    
     model.train()
+    return final_metrics
 
 
 def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
@@ -180,7 +244,7 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             kommulative = 0
             progress = tqdm(
                 train_loader,
-                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}"
+                desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}", position=0, leave=False
             )
             for envs in progress:
                 i+=1
@@ -196,7 +260,8 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                     random_vector = torch.normal(mean=1, std=0.1, size=(result.logits.shape[2],)).to(cfg.train_params.device)
                     shift_logits = (result.logits.float() * random_vector.reshape(1, 1, -1))[..., :-1, :].contiguous()
                     shift_labels = labels[..., 1:].contiguous()
-                    loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100, reduction="mean")
+                    loss = model.loss_function(logits=shift_logits, labels=shift_labels, vocab_size=model.config.vocab_size)
+                    # loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100, reduction="mean")
                     loss_list.append(loss)
                 loss_t = torch.stack(loss_list)
                 penalty = ((loss_t - loss_t.mean()) ** 2).sum()
@@ -242,14 +307,14 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             total_loss = 0
             kommulative = 0
             progress = tqdm(train_loader,
-                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
+                            desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}", position=0, leave=False)
             for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
                 i += 1
                 kommulative += 1
-                outputs = model(
-                    input_ids=input_batch.to(cfg.train_params.device),
+                outputs =  model(
                     attention_mask=attention_batch.to(cfg.train_params.device),
-                    labels=target_input_batch.to(cfg.train_params.device)
+                    input_ids=input_batch.to(cfg.train_params.device),
+                    labels=target_input_batch.to(cfg.train_params.device),
                 )
                 loss = outputs.loss
 
@@ -259,13 +324,13 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                     optimization_steps += 1
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
                     optimizer.step()
-                    scheduler.step()
                     optimizer.zero_grad()
+                    scheduler.step()
                     kommulative = 0
                     progress.set_description(
                         f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
                     total_loss = 0
-
+                # print(next(model.model.layers[0].parameters()))
                 if i % cfg.train_params.eval_every_step == 0:
                     evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
                     model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_{optimization_steps}", from_pt=True)

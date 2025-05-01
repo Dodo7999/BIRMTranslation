@@ -1,2 +1,11 @@
 .idea
 ./taiga
+data
+models
+model_checkpoints
+reports
+results
+qwen_32768
+generate
+outputs
+.ipynb_checkpoints
