@@ -9,3 +9,4 @@ qwen_32768
 generate
 outputs
 .ipynb_checkpoints
+*.log

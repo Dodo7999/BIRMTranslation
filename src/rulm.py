@@ -38,7 +38,7 @@ except ImportError:
 
 
 
-_TRAIN_SPLITS = 1
+_TRAIN_SPLITS = 10
 _DESCRIPTION = "Dataset for Russian language modeling"
 _URLS = {
     "train": ["train/{}.jsonl.zst".format(str(i).zfill(2)) for i in range(_TRAIN_SPLITS)],

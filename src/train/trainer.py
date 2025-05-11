@@ -1,7 +1,5 @@
 import logging
 
-import logging
-
 import evaluate
 import torch
 from torch import nn
@@ -11,7 +9,11 @@ import numpy as np
 
 log = logging.getLogger(__file__.split('/')[-1])
 
-log = logging.getLogger(__file__.split('/')[-1])
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 def generator(data, batch_size, shuffle=False):
@@ -227,17 +229,62 @@ def evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer):
 
 
 def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
+    log.info(f"Starting training with device: {cfg.train_params.device}")
+    log.info(f"Training parameters: epochs={cfg.train_params.num_epochs}, batch_size={cfg.train_params.batch_size}, learning_rate={cfg.train_params.learning_rate}")
+    
+    # Log tokenizer information
+    log.info(f"Tokenizer information:")
+    log.info(f"- Vocabulary size: {len(tokenizer)}")
+    log.info(f"- Special tokens: {tokenizer.special_tokens_map}")
+    log.info(f"- Padding token: {tokenizer.pad_token}")
+    log.info(f"- EOS token: {tokenizer.eos_token}")
+    
+    # Log dataset information
+    log.info(f"Dataset information:")
+    log.info(f"- Training dataset size: {len(train_dataset)}")
+    log.info(f"- Validation dataset size: {len(val_dataset)}")
+    
+    # Log example from training dataset
+    if len(train_dataset) > 0:
+        first_train_example = train_dataset[0]
+        log.info(f"First training example: {first_train_example}")
+    
+    # Log example from validation dataset
+    if len(val_dataset) > 0:
+        first_val_example = val_dataset[0]
+        log.info(f"First validation example: {first_val_example}")
+    
     model.to(cfg.train_params.device)
     model.train()
 
     if cfg.shift.type != "None":
+        log.info(f"Using shift type: {cfg.shift.type}")
         train_clusters = np.fromfile(f"{cfg.shift.path}/clusters_train.dat", dtype=int)
+        log.info(f"Loaded {len(train_clusters)} training clusters")
         lambda_regularization = torch.tensor(1.0)
+        
+    # Limit dataset sizes if specified in config
+    if hasattr(cfg, 'train_size') and cfg.train_size > 0:
+        log.info(f"Limited training dataset from {len(train_dataset)} samples")
+        log.info(f"Limited training clusters from {len(train_clusters)} samples")
+        train_dataset = train_dataset.select(range(min(cfg.train_size, len(train_dataset))))
+        train_clusters = train_clusters[:cfg.train_size]
+        log.info(f"Limited training dataset to {len(train_dataset)} samples")
+        log.info(f"Limited training clusters to {len(train_clusters)} samples")
+    
+    if hasattr(cfg, 'val_size') and cfg.val_size > 0:
+        log.info(f"Limited validation dataset from {len(val_dataset)} samples")
+        val_dataset = val_dataset.select(range(min(cfg.val_size, len(val_dataset))))
+        log.info(f"Limited validation dataset to {len(val_dataset)} samples")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.train_params.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=cfg.train_params.gamma)
     optimization_steps = 0
+    
+    log.info("Initialized optimizer and scheduler")
+    
     for epoch in range(cfg.train_params.num_epochs):
+        log.info(f"Starting epoch {epoch + 1}/{cfg.train_params.num_epochs}")
         i = 0
         if cfg.shift.type != "None":
             train_loader = MyDataLoader(
@@ -251,25 +298,32 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                 desc=f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}, lambda = {lambda_regularization}", position=0, leave=False
             )
             for envs in progress:
+                log.info(f"Step 1")
                 i+=1
                 kommulative += 1
                 loss_list = []
                 for input_batch, attention_batch, target_input_batch, target_attention_batch in envs:
-                    result = model(
-                        attention_mask=attention_batch.to(cfg.train_params.device),
-                        input_ids=input_batch.to(cfg.train_params.device),
-                        labels=target_input_batch.to(cfg.train_params.device),
-                    )
-                    labels = target_input_batch.to(cfg.train_params.device)
-                    random_vector = torch.normal(mean=1, std=0.1, size=(result.logits.shape[2],)).to(cfg.train_params.device)
-                    shift_logits = (result.logits.float() * random_vector.reshape(1, 1, -1))[..., :-1, :].contiguous()
-                    shift_labels = labels[..., 1:].contiguous()
-                    loss = model.loss_function(logits=shift_logits, labels=shift_labels, vocab_size=model.config.vocab_size)
-                    # loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1), ignore_index=-100, reduction="mean")
-                    loss_list.append(loss)
+                    log.info(f"Step 2")
+                    try:
+                        result = model(
+                            attention_mask=attention_batch.to(cfg.train_params.device),
+                            input_ids=input_batch.to(cfg.train_params.device),
+                            labels=target_input_batch.to(cfg.train_params.device),
+                        )
+                        labels = target_input_batch.to(cfg.train_params.device)
+                        random_vector = torch.normal(mean=1, std=0.1, size=(result.logits.shape[2],)).to(cfg.train_params.device)
+                        shift_logits = (result.logits.float() * random_vector.reshape(1, 1, -1))[..., :-1, :].contiguous()
+                        shift_labels = labels[..., 1:].contiguous()
+                        loss = model.loss_function(logits=shift_logits, labels=shift_labels, vocab_size=model.config.vocab_size)
+                        loss_list.append(loss)
+                    except Exception as e:
+                        log.error(f"Error in forward pass: {str(e)}")
+                        log.error(f"Input shapes - input_batch: {input_batch.shape}, attention_batch: {attention_batch.shape}, target_batch: {target_input_batch.shape}")
+                        raise e
+                log.info(f"Step 3")
                 loss_t = torch.stack(loss_list)
                 penalty = ((loss_t - loss_t.mean()) ** 2).sum()
-
+                log.info(f"Step 4")
                 los = loss_t.sum()
                 last_layers = list(model.children())[-1]
                 los.backward(retain_graph=True)
@@ -284,11 +338,12 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                     lambda_regularization = regularization
                 else:
                     lambda_regularization = torch.tensor(10000.0).to(cfg.train_params.device)
-
+                log.info(f"Step 5")
                 loss = loss_t.sum() + lambda_regularization * penalty
-
+                log.info(f"Step 6")
                 (loss / cfg.train_params.kommulation_steps).backward()
                 total_loss += loss.detach().cpu().item() / cfg.train_params.kommulation_steps
+                log.info(f"Step 7")
                 if kommulative == cfg.train_params.kommulation_steps:
                     optimization_steps += 1
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
@@ -296,12 +351,22 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                     scheduler.step()
                     optimizer.zero_grad()
                     kommulative = 0
+                    log.info(f"Step 8")
+                    current_lr = scheduler.get_last_lr()[0]
+                    log.info(f"Step {optimization_steps} - Loss: {loss_t.clone().detach().cpu().mean():.4f}, "
+                            f"Lambda: {regularization:.4f}, LR: {current_lr:.6f}")
+                    log.info(f"Step 9")
                     progress.set_description(
                         f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {loss_t.clone().detach().cpu()}, optimization steps = {optimization_steps}, lambda = {regularization}")
                     total_loss = 0
+                    log.info(f"Step 10")
                 if i % cfg.train_params.eval_every_step == 0:
-                    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
-                    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_{optimization_steps}", from_pt=True)
+                    log.info(f"Running evaluation at step {i}")
+                    metrics = evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+                    log.info(f"Evaluation metrics: {metrics}")
+                    save_path = cfg.model_save_path + f"/{cfg.model.type}_{optimization_steps}"
+                    log.info(f"Saving model to {save_path}")
+                    model.save_pretrained(save_path, from_pt=True)
 
         else:
             train_loader = MyDataLoader(
@@ -315,17 +380,21 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
             for input_batch, attention_batch, target_input_batch, target_attention_batch in progress:
                 i += 1
                 kommulative += 1
-                outputs =  model(
-                    attention_mask=attention_batch.to(cfg.train_params.device),
-                    input_ids=input_batch.to(cfg.train_params.device),
-                    labels=target_input_batch.to(cfg.train_params.device),
-                    input_ids=input_batch.to(cfg.train_params.device),
-                    labels=target_input_batch.to(cfg.train_params.device),
-                )
-                loss = outputs.loss
+                try:
+                    outputs = model(
+                        attention_mask=attention_batch.to(cfg.train_params.device),
+                        input_ids=input_batch.to(cfg.train_params.device),
+                        labels=target_input_batch.to(cfg.train_params.device),
+                    )
+                    loss = outputs.loss
+                except Exception as e:
+                    log.error(f"Error in forward pass: {str(e)}")
+                    log.error(f"Input shapes - input_batch: {input_batch.shape}, attention_batch: {attention_batch.shape}, target_batch: {target_input_batch.shape}")
+                    raise e
 
                 (loss / cfg.train_params.kommulation_steps).backward()
                 total_loss += loss.detach().cpu().item() / cfg.train_params.kommulation_steps
+                
                 if kommulative == cfg.train_params.kommulation_steps:
                     optimization_steps += 1
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
@@ -333,15 +402,28 @@ def train_seq2seq_model(cfg, model, train_dataset, val_dataset, tokenizer):
                     optimizer.zero_grad()
                     scheduler.step()
                     kommulative = 0
+                    
+                    current_lr = scheduler.get_last_lr()[0]
+                    log.info(f"Step {optimization_steps} - Loss: {total_loss:.4f}, LR: {current_lr:.6f}")
+                    
                     progress.set_description(
                         f"Training Epoch {epoch + 1}/{cfg.train_params.num_epochs}, loss = {total_loss}, optimization steps = {optimization_steps}")
                     total_loss = 0
-                # print(next(model.model.layers[0].parameters()))
+                    
                 if i % cfg.train_params.eval_every_step == 0:
-                    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
-                    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_{optimization_steps}", from_pt=True)
+                    log.info(f"Running evaluation at step {i}")
+                    metrics = evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+                    log.info(f"Evaluation metrics: {metrics}")
+                    save_path = cfg.model_save_path + f"/{cfg.model.type}_{optimization_steps}"
+                    log.info(f"Saving model to {save_path}")
+                    model.save_pretrained(save_path, from_pt=True)
 
-    evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
-    model.save_pretrained(cfg.model_save_path + f"/{cfg.model.type}_final", from_pt=True)
+    log.info("Training completed. Running final evaluation...")
+    final_metrics = evaluate_seq2seq_model(cfg, model, val_dataset, tokenizer)
+    log.info(f"Final evaluation metrics: {final_metrics}")
+    
+    final_save_path = cfg.model_save_path + f"/{cfg.model.type}_final"
+    log.info(f"Saving final model to {final_save_path}")
+    model.save_pretrained(final_save_path, from_pt=True)
 
     return model

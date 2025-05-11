@@ -1,16 +1,15 @@
 #!/bin/sh
 
-#SBATCH --job-name=qwen_erm_paraphrase
-#SBATCH --error=/userspace/bma/qwen_erm_paraphrase_err.log
-#SBATCH --output=/userspace/bma/qwen_erm_paraphrase.log
+#SBATCH --job-name=qwen_birm
+#SBATCH --error=/userspace/bma/BIRMTranslation/qwen_birm_err.log
+#SBATCH --output=/userspace/bma/BIRMTranslation/qwen_birm.log
 #SBATCH --partition=a100
 #SBATCH --nodes=1
-#SBATCH --nodelist=ngpu03
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-socket=1
 #SBATCH --no-requeue
-#SBATCH -o qwen_erm_paraphrase.log
+#SBATCH -o qwen_birm.log
 
 echo "# SLURM_JOBID  = ${SLURM_JOBID}"
 echo "# SLURM_JOB_NODELIST = ${SLURM_JOB_NODELIST}"
